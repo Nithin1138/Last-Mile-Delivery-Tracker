@@ -1,0 +1,244 @@
+"""
+Security & RBAC Test Suite
+
+Verifies strict server-side authorization:
+- Public registration creates CUSTOMER only (no privilege escalation).
+- Customer cannot update order delivery status (403).
+- Customer cannot access another customer's order, timeline, attempts, or assignment audit (403).
+- Customer cannot reschedule another customer's order (403).
+- Customer/Agent cannot modify rate cards, manage agents, or access admin dashboards (403).
+- Agent cannot view or update another agent's assigned order, timeline, or attempts (403).
+- Multi-capacity agent load management bounds load correctly.
+"""
+
+from decimal import Decimal
+from uuid import uuid4
+import pytest
+from app.models.models import (
+    User, Order, DeliveryAgent, Zone, Area, RateCard,
+    RoleEnum, OrderStatusEnum, OrderTypeEnum, ZoneRelationEnum, AgentStatusEnum,
+)
+from app.core.security import create_access_token
+
+
+def test_public_registration_cannot_create_admin_or_agent(client, db):
+    """Attempting to supply role=ADMIN during registration must be ignored or rejected."""
+    payload = {
+        "email": f"attacker_{uuid4().hex[:6]}@test.com",
+        "password": "password123",
+        "name": "Attacker Account",
+        "role": "ADMIN",  # Attempted privilege escalation
+    }
+    res = client.post("/api/auth/register", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    # The server must strictly create CUSTOMER, never ADMIN
+    assert data["user"]["role"] == "CUSTOMER"
+
+    # Verify directly in DB
+    user = db.query(User).filter(User.email == payload["email"]).first()
+    assert user is not None
+    assert user.role == RoleEnum.CUSTOMER
+
+
+def test_customer_cannot_update_order_status(client, db, customer_token):
+    """Customers are strictly forbidden from calling POST /api/orders/{id}/status."""
+    cust = User(email=f"owner_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Order Owner", role=RoleEnum.CUSTOMER)
+    db.add(cust)
+    db.flush()
+
+    order = Order(
+        customer_id=cust.id,
+        pickup_address="Pickup Address",
+        pickup_pincode="110001",
+        drop_address="Drop Address",
+        drop_pincode="110001",
+        length_cm=Decimal("10"),
+        breadth_cm=Decimal("10"),
+        height_cm=Decimal("10"),
+        actual_weight_kg=Decimal("1"),
+        volumetric_weight_kg=Decimal("0.2"),
+        chargeable_weight_kg=Decimal("1"),
+        base_charge=Decimal("50"),
+        cod_charge=Decimal("0"),
+        total_charge=Decimal("50"),
+        order_type=OrderTypeEnum.B2C,
+        payment_type="PREPAID",
+        status=OrderStatusEnum.CREATED,
+    )
+    db.add(order)
+    db.commit()
+
+    # Customer tries to mark order DELIVERED
+    res = client.post(
+        f"/api/orders/{order.id}/status",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={"status": "DELIVERED"},
+    )
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_customer_cannot_view_another_customers_order_resources(client, db):
+    """Customer A cannot view Customer B's order details, timeline, attempts, or assignment decisions."""
+    cust_a = User(email=f"cust_a_{uuid4().hex[:6]}@test.com", password_hash="hash", name="Cust A", role=RoleEnum.CUSTOMER)
+    cust_b = User(email=f"cust_b_{uuid4().hex[:6]}@test.com", password_hash="hash", name="Cust B", role=RoleEnum.CUSTOMER)
+    db.add_all([cust_a, cust_b])
+    db.flush()
+
+    token_a = create_access_token(data={"sub": str(cust_a.id), "role": "CUSTOMER"})
+
+    order_b = Order(
+        customer_id=cust_b.id,
+        pickup_address="Loc A", pickup_pincode="110001",
+        drop_address="Loc B", drop_pincode="110001",
+        length_cm=Decimal("10"), breadth_cm=Decimal("10"), height_cm=Decimal("10"),
+        actual_weight_kg=Decimal("1"), volumetric_weight_kg=Decimal("0.2"), chargeable_weight_kg=Decimal("1"),
+        base_charge=Decimal("50"), cod_charge=Decimal("0"), total_charge=Decimal("50"),
+        order_type=OrderTypeEnum.B2C, payment_type="PREPAID", status=OrderStatusEnum.CREATED,
+    )
+    db.add(order_b)
+    db.commit()
+
+    # Customer A requests Customer B's order
+    res1 = client.get(f"/api/orders/{order_b.id}", headers={"Authorization": f"Bearer {token_a}"})
+    assert res1.status_code == 403
+
+    # Customer A requests Customer B's timeline
+    res2 = client.get(f"/api/orders/{order_b.id}/timeline", headers={"Authorization": f"Bearer {token_a}"})
+    assert res2.status_code == 403
+
+    # Customer A requests Customer B's attempts
+    res3 = client.get(f"/api/orders/{order_b.id}/attempts", headers={"Authorization": f"Bearer {token_a}"})
+    assert res3.status_code == 403
+
+    # Customer A requests Customer B's assignment decisions
+    res4 = client.get(f"/api/orders/{order_b.id}/assignments", headers={"Authorization": f"Bearer {token_a}"})
+    assert res4.status_code == 403
+
+    # Customer A attempts to reschedule Customer B's order
+    res5 = client.post(
+        f"/api/orders/{order_b.id}/reschedule",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"new_scheduled_date": "2026-10-10T10:00:00"},
+    )
+    assert res5.status_code == 403
+
+
+def test_agent_cannot_update_or_view_unassigned_order_resources(client, db):
+    """Agent A cannot view or update status, timeline, or attempts for an order assigned to Agent B."""
+    cust = User(email=f"c_ord_{uuid4().hex[:6]}@test.com", password_hash="hash", name="Cust Ord", role=RoleEnum.CUSTOMER)
+    user_a = User(email=f"agent_a_{uuid4().hex[:6]}@test.com", password_hash="hash", name="Agent A", role=RoleEnum.AGENT)
+    user_b = User(email=f"agent_b_{uuid4().hex[:6]}@test.com", password_hash="hash", name="Agent B", role=RoleEnum.AGENT)
+    db.add_all([cust, user_a, user_b])
+    db.flush()
+
+    agent_a = DeliveryAgent(user_id=user_a.id, availability_status=AgentStatusEnum.AVAILABLE)
+    agent_b = DeliveryAgent(user_id=user_b.id, availability_status=AgentStatusEnum.AVAILABLE)
+    db.add_all([agent_a, agent_b])
+    db.flush()
+
+    token_a = create_access_token(data={"sub": str(user_a.id), "role": "AGENT"})
+
+    # Order assigned to Agent B
+    order = Order(
+        customer_id=cust.id,
+        agent_id=agent_b.id,
+        pickup_address="Loc A", pickup_pincode="110001",
+        drop_address="Loc B", drop_pincode="110001",
+        length_cm=Decimal("10"), breadth_cm=Decimal("10"), height_cm=Decimal("10"),
+        actual_weight_kg=Decimal("1"), volumetric_weight_kg=Decimal("0.2"), chargeable_weight_kg=Decimal("1"),
+        base_charge=Decimal("50"), cod_charge=Decimal("0"), total_charge=Decimal("50"),
+        order_type=OrderTypeEnum.B2C, payment_type="PREPAID", status=OrderStatusEnum.ASSIGNED,
+    )
+    db.add(order)
+    db.commit()
+
+    # Agent A tries to view order
+    res1 = client.get(f"/api/orders/{order.id}", headers={"Authorization": f"Bearer {token_a}"})
+    assert res1.status_code == 403
+
+    # Agent A tries to view timeline
+    res2 = client.get(f"/api/orders/{order.id}/timeline", headers={"Authorization": f"Bearer {token_a}"})
+    assert res2.status_code == 403
+
+    # Agent A tries to view delivery attempts
+    res3 = client.get(f"/api/orders/{order.id}/attempts", headers={"Authorization": f"Bearer {token_a}"})
+    assert res3.status_code == 403
+
+    # Agent A tries to update status to PICKED_UP
+    res4 = client.post(
+        f"/api/orders/{order.id}/status",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"status": "PICKED_UP"},
+    )
+    assert res4.status_code == 403
+
+
+def test_customer_and_agent_cannot_access_admin_endpoints(client, customer_token, db):
+    """Customer and Agent calling admin configuration endpoints must receive 403 Forbidden."""
+    agent_user = User(email=f"ag_sec_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Sec Agent", role=RoleEnum.AGENT)
+    db.add(agent_user)
+    db.flush()
+    agent_token = create_access_token(data={"sub": str(agent_user.id), "role": "AGENT"})
+
+    # Customer tries dashboard
+    assert client.get("/api/admin/dashboard", headers={"Authorization": f"Bearer {customer_token}"}).status_code == 403
+
+    # Agent tries dashboard
+    assert client.get("/api/admin/dashboard", headers={"Authorization": f"Bearer {agent_token}"}).status_code == 403
+
+    # Customer tries creating rate card
+    assert client.post(
+        "/api/admin/rate-cards",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={"order_type": "B2C", "zone_type": "INTRA", "base_fee": 50, "rate_per_kg": 10},
+    ).status_code == 403
+
+    # Agent tries creating delivery agent
+    assert client.post(
+        "/api/admin/agents",
+        headers={"Authorization": f"Bearer {agent_token}"},
+        json={"name": "New Agent", "email": "new@agent.com", "phone": "9999999999"},
+    ).status_code == 403
+
+
+def test_multi_capacity_agent_claim_and_release(db):
+    """Agent with capacity 3 accepts 3 orders before turning BUSY, and returns to AVAILABLE on release."""
+    from app.services.agent_claim import atomic_claim_agent, release_agent
+
+    user = User(email=f"multi_cap_{uuid4().hex[:6]}@test.com", password_hash="hash", name="Cap Agent", role=RoleEnum.AGENT)
+    db.add(user)
+    db.flush()
+    agent = DeliveryAgent(user_id=user.id, max_capacity=3, current_load=0, availability_status=AgentStatusEnum.AVAILABLE)
+    db.add(agent)
+    db.commit()
+
+    order1_id, order2_id, order3_id, order4_id = uuid4(), uuid4(), uuid4(), uuid4()
+
+    # Claim 1: load becomes 1, status remains AVAILABLE
+    assert atomic_claim_agent(db, agent.id, order1_id) is True
+    db.refresh(agent)
+    assert agent.current_load == 1
+    assert agent.availability_status == AgentStatusEnum.AVAILABLE
+
+    # Claim 2: load becomes 2, status remains AVAILABLE
+    assert atomic_claim_agent(db, agent.id, order2_id) is True
+    db.refresh(agent)
+    assert agent.current_load == 2
+    assert agent.availability_status == AgentStatusEnum.AVAILABLE
+
+    # Claim 3: load becomes 3 (hit max capacity), status becomes BUSY
+    assert atomic_claim_agent(db, agent.id, order3_id) is True
+    db.refresh(agent)
+    assert agent.current_load == 3
+    assert agent.availability_status == AgentStatusEnum.BUSY
+
+    # Claim 4: rejected because agent is at capacity
+    assert atomic_claim_agent(db, agent.id, order4_id) is False
+
+    # Release 1 order: load becomes 2, status returns to AVAILABLE
+    release_agent(db, agent.id)
+    db.refresh(agent)
+    assert agent.current_load == 2
+    assert agent.availability_status == AgentStatusEnum.AVAILABLE
