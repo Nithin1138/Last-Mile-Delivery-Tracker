@@ -1,6 +1,6 @@
 import React from 'react';
 import { DeliveryAttempt } from '../types';
-import { AlertCircle, CheckCircle, Clock, Truck, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Clock, Truck, ShieldAlert, AlertTriangle } from 'lucide-react';
 
 interface Props {
   attempts: DeliveryAttempt[];
@@ -9,7 +9,7 @@ interface Props {
 export const DeliveryAttemptsList: React.FC<Props> = ({ attempts }) => {
   if (!attempts || attempts.length === 0) {
     return (
-      <div className="text-sm text-slate-400 p-4 bg-slate-800/40 rounded-lg border border-slate-700">
+      <div className="text-xs text-slate-400 p-6 bg-slate-950/60 rounded-2xl border border-slate-800 text-center">
         No delivery attempts recorded yet.
       </div>
     );
@@ -25,35 +25,35 @@ export const DeliveryAttemptsList: React.FC<Props> = ({ attempts }) => {
         return (
           <div
             key={attempt.id}
-            className={`border rounded-xl p-4 transition-all ${
+            className={`border rounded-2xl p-4 transition-all shadow-lg card-hover-subtle ${
               isFailed
-                ? 'bg-rose-950/20 border-rose-700/40 text-rose-200'
+                ? 'bg-rose-950/20 border-rose-500/30 text-rose-200 shadow-rose-950/10'
                 : isDelivered
-                ? 'bg-emerald-950/20 border-emerald-700/40 text-emerald-200'
-                : 'bg-slate-800/80 border-slate-700 text-slate-200'
+                ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200 shadow-emerald-950/10'
+                : 'bg-slate-950/70 border-slate-800/80 text-slate-200'
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/60 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-700 font-mono">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-xs bg-slate-900 px-3 py-1 rounded-xl border border-slate-700/80 font-mono text-slate-100 shadow-sm">
                   Attempt #{attempt.attempt_number}
                 </span>
                 {isDelivered && (
-                  <span className="flex items-center gap-1 text-xs bg-emerald-950/80 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                    Success
+                  <span className="flex items-center gap-1 text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Delivered Successfully
                   </span>
                 )}
                 {isFailed && (
-                  <span className="flex items-center gap-1 text-xs bg-rose-950/80 text-rose-300 border border-rose-700 px-2 py-0.5 rounded-full font-medium">
-                    <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                    Failed
+                  <span className="flex items-center gap-1 text-[11px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-0.5 rounded-full font-bold">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    Delivery Failed
                   </span>
                 )}
                 {isInProgress && (
-                  <span className="flex items-center gap-1 text-xs bg-cyan-950/80 text-cyan-300 border border-cyan-700 px-2 py-0.5 rounded-full font-medium">
-                    <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                    In Progress
+                  <span className="flex items-center gap-1 text-[11px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2.5 py-0.5 rounded-full font-bold animate-pulse">
+                    <Clock className="w-3.5 h-3.5" />
+                    Out for Delivery
                   </span>
                 )}
               </div>
@@ -61,29 +61,35 @@ export const DeliveryAttemptsList: React.FC<Props> = ({ attempts }) => {
               {attempt.agent_name && (
                 <div className="flex items-center gap-1.5 text-xs text-slate-300">
                   <Truck className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Agent: <strong>{attempt.agent_name}</strong></span>
+                  <span>Assigned Agent: <strong className="text-slate-100 font-semibold">{attempt.agent_name}</strong></span>
                 </div>
               )}
             </div>
 
             {/* Failure Reason */}
             {isFailed && attempt.failure_reason && (
-              <div className="mt-3 text-xs bg-rose-900/30 border border-rose-700/50 p-2.5 rounded-lg flex items-start gap-2 text-rose-200">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-rose-300">Failure Reason: </strong>
-                  {attempt.failure_reason}
+              <div className="mt-3 text-xs bg-rose-950/40 border border-rose-800/60 p-3 rounded-xl text-rose-300 leading-relaxed">
+                <div className="font-semibold text-rose-400 flex items-center gap-1.5 mb-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Recorded Failure Reason:
                 </div>
+                <div>{attempt.failure_reason}</div>
               </div>
             )}
 
-            {/* Timestamps */}
+            {/* Attempt Timestamps */}
             <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-slate-400 font-mono">
               {attempt.started_at && (
-                <div>Started: {new Date(attempt.started_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div>
+                  <span className="text-slate-500">Started: </span>
+                  {new Date(attempt.started_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                </div>
               )}
               {attempt.completed_at && (
-                <div>Completed: {new Date(attempt.completed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div>
+                  <span className="text-slate-500">Finished: </span>
+                  {new Date(attempt.completed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                </div>
               )}
             </div>
           </div>

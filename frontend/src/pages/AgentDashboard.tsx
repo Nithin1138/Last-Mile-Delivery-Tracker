@@ -1,66 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ordersApi, agentSelfApi, adminApi, extractErrorMessage } from '../api/client';
+import { agentSelfApi, adminApi, ordersApi, extractErrorMessage } from '../api/client';
 import { Order, AgentAvailability, Zone } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { OrderDetailModal } from './OrderDetailModal';
-import { Truck, CheckCircle2, ShieldAlert, Clock, ArrowRight, AlertCircle, RefreshCw, Power, MapPin, Edit3 } from 'lucide-react';
+import { 
+  Truck, 
+  MapPin, 
+  Clock, 
+  CheckCircle2, 
+  ShieldAlert, 
+  ArrowRight, 
+  Power, 
+  Edit3, 
+  RefreshCw,
+  Sparkles,
+  PackageCheck,
+  AlertTriangle,
+  X
+} from 'lucide-react';
 
 export const AgentDashboard: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [availability, setAvailability] = useState<AgentAvailability>('AVAILABLE');
-  const [updatingAvailability, setUpdatingAvailability] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Agent Zone & Location State
+  // Agent self-state
+  const [availability, setAvailability] = useState<AgentAvailability>('AVAILABLE');
   const [currentZoneId, setCurrentZoneId] = useState<string | null>(null);
   const [currentZoneName, setCurrentZoneName] = useState<string | null>(null);
-  const [allZones, setAllZones] = useState<Zone[]>([]);
+  const [updatingAvailability, setUpdatingAvailability] = useState(false);
+  const [dutyFeedback, setDutyFeedback] = useState<string | null>(null);
+
+  // Operating zone modal state
   const [isEditingZone, setIsEditingZone] = useState(false);
+  const [allZones, setAllZones] = useState<Zone[]>([]);
   const [selectedNewZoneId, setSelectedNewZoneId] = useState<string>('');
   const [savingZone, setSavingZone] = useState(false);
-
-  const [dutyFeedback, setDutyFeedback] = useState<string | null>(null);
 
   // Failure modal state
   const [failureOrderId, setFailureOrderId] = useState<string | null>(null);
   const [failureReason, setFailureReason] = useState('');
   const [submittingFailure, setSubmittingFailure] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchAgentStatus = async () => {
-    try {
-      const self = await agentSelfApi.getSelf();
-      if (self.availability_status) {
-        setAvailability(self.availability_status as AgentAvailability);
-      }
-      if (self.current_zone_id) {
-        setCurrentZoneId(self.current_zone_id);
-      }
-      if (self.current_zone_name) {
-        setCurrentZoneName(self.current_zone_name);
-      }
-    } catch (err) {
-      console.error('Failed to fetch agent profile', err);
-    }
-  };
-
-  const fetchZones = async () => {
-    try {
-      const zones = await adminApi.listZones();
-      setAllZones(zones.filter((z) => z.is_active));
-    } catch (err) {
-      console.error('Failed to fetch zones', err);
-    }
-  };
-
-  const fetchAssigned = async () => {
-    setLoading(true);
+  const fetchAssigned = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
-      const res = await ordersApi.listOrders();
+      const self = await agentSelfApi.getSelf();
+      const res = await ordersApi.listOrders({ agent_id: self.id });
       setOrders(res.orders);
     } catch (err: any) {
       setError(extractErrorMessage(err));
@@ -69,17 +59,31 @@ export const AgentDashboard: React.FC = () => {
     }
   };
 
+  const fetchSelfAndZones = async () => {
+    try {
+      const [self, zones] = await Promise.all([
+        agentSelfApi.getSelf(),
+        adminApi.listZones(),
+      ]);
+      setAvailability(self.availability_status as AgentAvailability);
+      setCurrentZoneId(self.current_zone_id || null);
+      setCurrentZoneName(self.current_zone_name || null);
+      setAllZones(zones);
+    } catch (err: any) {
+      console.error('Failed to load agent profile or zones:', err);
+    }
+  };
+
   useEffect(() => {
-    fetchAgentStatus();
-    fetchZones();
     fetchAssigned();
+    fetchSelfAndZones();
   }, []);
 
-  const handleStatusTransition = async (orderId: string, nextStatus: string) => {
+  const handleStatusTransition = async (orderId: string, newStatus: string) => {
     setActionLoading(orderId);
     try {
-      await ordersApi.updateStatus(orderId, { status: nextStatus });
-      await fetchAssigned();
+      await ordersApi.updateStatus(orderId, { status: newStatus });
+      await fetchAssigned(false);
     } catch (err: any) {
       alert(extractErrorMessage(err));
     } finally {
@@ -89,16 +93,17 @@ export const AgentDashboard: React.FC = () => {
 
   const handleMarkFailed = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!failureOrderId || !failureReason) return;
+    if (!failureOrderId || !failureReason.trim()) return;
+
     setSubmittingFailure(true);
     try {
       await ordersApi.updateStatus(failureOrderId, {
         status: 'FAILED',
-        failure_reason: failureReason,
+        failure_reason: failureReason.trim(),
       });
       setFailureOrderId(null);
       setFailureReason('');
-      await fetchAssigned();
+      await fetchAssigned(false);
     } catch (err: any) {
       alert(extractErrorMessage(err));
     } finally {
@@ -112,7 +117,7 @@ export const AgentDashboard: React.FC = () => {
     try {
       await agentSelfApi.updateSelf({ availability_status: newStatus });
       setAvailability(newStatus);
-      setDutyFeedback(`Duty status updated to ${newStatus}`);
+      setDutyFeedback(`Duty status set to ${newStatus}`);
       setTimeout(() => setDutyFeedback(null), 3000);
     } catch (err: any) {
       alert(extractErrorMessage(err));
@@ -140,17 +145,17 @@ export const AgentDashboard: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
       {/* Top Banner: Status, Zone & Availability */}
-      <div className="bg-slate-800/90 border border-slate-700 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="p-3 bg-indigo-950/80 border border-indigo-700/60 rounded-xl text-indigo-400">
-            <Truck className="w-6 h-6" />
+      <div className="bg-slate-900/90 border border-slate-800 p-6 sm:p-7 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-start sm:items-center gap-4">
+          <div className="p-3.5 bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-2xl text-white shadow-lg shadow-indigo-600/25">
+            <Truck className="w-7 h-7" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-100">Delivery Agent Portal</h1>
-            </div>
+            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              Delivery Agent Dispatch Hub
+            </h1>
 
             {/* Operating Zone Indicator */}
             <div className="flex items-center gap-2 mt-1.5 text-xs">
@@ -159,14 +164,14 @@ export const AgentDashboard: React.FC = () => {
                 Base Zone:
               </span>
               {currentZoneName ? (
-                <span className="bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-semibold px-2 py-0.5 rounded-md flex items-center gap-1.5">
+                <span className="bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-semibold px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm">
                   {currentZoneName}
                   <button
                     onClick={() => {
                       setSelectedNewZoneId(currentZoneId || '');
                       setIsEditingZone(true);
                     }}
-                    className="text-slate-400 hover:text-indigo-200 cursor-pointer"
+                    className="text-slate-400 hover:text-indigo-200 cursor-pointer transition-colors"
                     title="Change Operating Zone"
                   >
                     <Edit3 className="w-3 h-3" />
@@ -178,7 +183,7 @@ export const AgentDashboard: React.FC = () => {
                     setSelectedNewZoneId('');
                     setIsEditingZone(true);
                   }}
-                  className="bg-amber-950/60 border border-amber-600/60 hover:border-amber-400 text-amber-300 font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="bg-amber-950/60 border border-amber-600/60 hover:border-amber-400 text-amber-300 font-semibold px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-105"
                 >
                   <span>⚠️ Unassigned (Click to Set Zone)</span>
                   <Edit3 className="w-3 h-3" />
@@ -189,10 +194,10 @@ export const AgentDashboard: React.FC = () => {
         </div>
 
         {/* Availability Toggle */}
-        <div className="flex flex-col items-start md:items-end gap-1">
-          <div className="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700">
-            <span className="text-xs text-slate-400 font-medium px-2 flex items-center gap-1">
-              <Power className="w-3.5 h-3.5" />
+        <div className="flex flex-col items-start md:items-end gap-1.5">
+          <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 shadow-inner">
+            <span className="text-xs text-slate-400 font-semibold px-2 flex items-center gap-1">
+              <Power className="w-3.5 h-3.5 text-indigo-400" />
               Duty:
             </span>
             {(['AVAILABLE', 'BUSY', 'OFFLINE'] as AgentAvailability[]).map((st) => (
@@ -200,14 +205,14 @@ export const AgentDashboard: React.FC = () => {
                 key={st}
                 disabled={updatingAvailability}
                 onClick={() => handleToggleAvailability(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   availability === st
                     ? st === 'AVAILABLE'
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                       : st === 'BUSY'
-                      ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30'
+                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
                       : 'bg-slate-700 text-slate-200'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                 }`}
               >
                 {st}
@@ -215,36 +220,44 @@ export const AgentDashboard: React.FC = () => {
             ))}
           </div>
           {dutyFeedback && (
-            <span className="text-[11px] text-emerald-400 font-medium animate-fadeIn">
+            <span className="text-[11px] text-emerald-400 font-semibold animate-in fade-in">
               ✓ {dutyFeedback}
             </span>
           )}
         </div>
       </div>
 
-      {/* Zone Edit Modal */}
+      {/* Zone Edit Modal via Portal */}
       {isEditingZone && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSaveZone} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-sm w-full space-y-4 text-xs shadow-2xl animate-in zoom-in-95">
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
-              <MapPin className="w-5 h-5" />
-              Set Your Operating Zone
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <form onSubmit={handleSaveZone} className="bg-slate-900 border border-slate-800 p-6 sm:p-7 rounded-3xl max-w-md w-full space-y-4 text-xs shadow-2xl modal-animate">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                <MapPin className="w-4 h-4" />
+                Change Operating Delivery Zone
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingZone(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <p className="text-slate-300">
-              Orders originating in your operating zone are prioritized for auto-dispatch and nearest routing.
+              Select your assigned hub or service area. The automated assignment engine uses this to route packages destined for your coverage area.
             </p>
             <div>
-              <label className="block text-slate-400 mb-1 font-medium">Select Operational Zone</label>
+              <label className="block text-slate-300 mb-1.5 font-semibold">Select Operational Zone</label>
               <select
-                required
                 value={selectedNewZoneId}
                 onChange={(e) => setSelectedNewZoneId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl p-2.5 text-slate-100 focus:outline-none cursor-pointer"
               >
-                <option value="">-- Select a Zone --</option>
+                <option value="">-- No Operating Zone (Floating Agent) --</option>
                 {allZones.map((z) => (
                   <option key={z.id} value={z.id}>
-                    {z.name} ({z.area_count || 0} Areas)
+                    {z.name}
                   </option>
                 ))}
               </select>
@@ -253,14 +266,14 @@ export const AgentDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsEditingZone(false)}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg cursor-pointer transition-colors"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={savingZone || !selectedNewZoneId}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg disabled:opacity-50 cursor-pointer transition-colors"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl disabled:opacity-50 cursor-pointer transition-all shadow-lg shadow-indigo-600/25"
               >
                 {savingZone ? 'Saving...' : 'Save Zone'}
               </button>
@@ -270,14 +283,13 @@ export const AgentDashboard: React.FC = () => {
         document.body
       )}
 
-
-      {/* Assigned Orders */}
+      {/* Assigned Orders Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-200">Assigned Deliveries ({orders.length})</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">Assigned Deliveries ({orders.length})</h2>
           <button
-            onClick={fetchAssigned}
-            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold cursor-pointer"
+            onClick={() => fetchAssigned(false)}
+            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 font-semibold cursor-pointer transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh
@@ -285,28 +297,30 @@ export const AgentDashboard: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm bg-slate-800/40 rounded-xl border border-slate-700">
-            Loading assigned deliveries...
+          <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 flex flex-col items-center justify-center gap-3">
+            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <span>Loading assigned delivery dispatch...</span>
           </div>
         ) : error ? (
-          <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-xl text-rose-300 text-xs">
+          <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-2xl text-rose-300 text-xs shadow-lg">
             {error}
           </div>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm bg-slate-800/40 rounded-xl border border-slate-700 space-y-2">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-            <div>No active orders assigned to you right now.</div>
-            <p className="text-xs text-slate-500">Ensure your duty status is set to AVAILABLE to receive auto-dispatches.</p>
+          <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 space-y-3 shadow-lg">
+            <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+            <div className="font-bold text-slate-200 text-sm">No active shipments in your queue</div>
+            <p className="text-xs text-slate-500">Ensure your duty status is set to AVAILABLE to automatically receive dispatched orders.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {orders.map((order) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
+            {orders.map((order, idx) => {
               const isWorking = actionLoading === order.id;
 
               return (
                 <div
                   key={order.id}
-                  className="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-sm space-y-4 flex flex-col justify-between"
+                  style={{ animationDelay: `${idx * 40}ms` }}
+                  className="bg-slate-900/80 border border-slate-800 card-hover-glow card-enter rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between backdrop-blur-xl"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -314,30 +328,30 @@ export const AgentDashboard: React.FC = () => {
                       <StatusBadge status={order.status} size="sm" />
                     </div>
 
-                    <div className="text-xs space-y-2 bg-slate-900/60 p-3 rounded-lg border border-slate-700/60">
+                    <div className="text-xs space-y-2 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80">
                       <div>
-                        <span className="text-slate-400 block font-medium">Pickup:</span>
-                        <span className="text-slate-200">{order.pickup_address} ({order.pickup_pincode})</span>
+                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Pickup:</span>
+                        <span className="text-slate-200 font-medium">{order.pickup_address} ({order.pickup_pincode})</span>
                       </div>
-                      <div className="pt-2 border-t border-slate-700/50">
-                        <span className="text-slate-400 block font-medium">Deliver To:</span>
-                        <span className="text-slate-200 font-semibold">{order.drop_address} ({order.drop_pincode})</span>
+                      <div className="pt-2 border-t border-slate-800/80">
+                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Deliver To:</span>
+                        <span className="text-slate-200 font-bold">{order.drop_address} ({order.drop_pincode})</span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                      <span>Payment: <strong className={order.payment_type === 'COD' ? 'text-amber-300' : 'text-emerald-300'}>{order.payment_type}</strong></span>
+                      <span>Payment: <strong className={order.payment_type === 'COD' ? 'text-amber-300 font-bold' : 'text-emerald-300 font-bold'}>{order.payment_type}</strong></span>
                       <span>Total: <strong className="text-slate-100">₹{order.total_charge.toFixed(2)}</strong></span>
                     </div>
                   </div>
 
                   {/* Actions based on valid forward state machine */}
-                  <div className="pt-3 border-t border-slate-700/60 space-y-2">
+                  <div className="pt-3 border-t border-slate-800/80 space-y-2">
                     {order.status === 'ASSIGNED' && (
                       <button
                         disabled={isWorking}
                         onClick={() => handleStatusTransition(order.id, 'PICKED_UP')}
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-indigo-600/25 cursor-pointer disabled:opacity-50"
                       >
                         {isWorking ? 'Updating...' : 'Mark Package Picked Up'}
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -348,9 +362,9 @@ export const AgentDashboard: React.FC = () => {
                       <button
                         disabled={isWorking}
                         onClick={() => handleStatusTransition(order.id, 'IN_TRANSIT')}
-                        className="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        className="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-cyan-600/25 cursor-pointer disabled:opacity-50"
                       >
-                        {isWorking ? 'Updating...' : 'Start Transit to Hub / City'}
+                        {isWorking ? 'Updating...' : 'Start Transit to Destination'}
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -359,7 +373,7 @@ export const AgentDashboard: React.FC = () => {
                       <button
                         disabled={isWorking}
                         onClick={() => handleStatusTransition(order.id, 'OUT_FOR_DELIVERY')}
-                        className="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        className="w-full bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-purple-600/25 cursor-pointer disabled:opacity-50"
                       >
                         {isWorking ? 'Updating...' : 'Out for Delivery (Final Mile)'}
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -371,7 +385,7 @@ export const AgentDashboard: React.FC = () => {
                         <button
                           disabled={isWorking}
                           onClick={() => handleStatusTransition(order.id, 'DELIVERED')}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          className="bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 transition-all shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Mark Delivered
@@ -379,7 +393,7 @@ export const AgentDashboard: React.FC = () => {
                         <button
                           disabled={isWorking}
                           onClick={() => setFailureOrderId(order.id)}
-                          className="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          className="bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 transition-all shadow-lg shadow-rose-600/25 cursor-pointer disabled:opacity-50"
                         >
                           <ShieldAlert className="w-3.5 h-3.5" />
                           Mark Failed
@@ -389,9 +403,9 @@ export const AgentDashboard: React.FC = () => {
 
                     <button
                       onClick={() => setSelectedOrderId(order.id)}
-                      className="w-full text-center text-xs text-slate-400 hover:text-slate-200 py-1 cursor-pointer"
+                      className="w-full text-center text-xs text-slate-400 hover:text-slate-200 py-1.5 cursor-pointer transition-colors font-medium"
                     >
-                      View Full Details & History
+                      View Full Details & History →
                     </button>
                   </div>
                 </div>
@@ -403,8 +417,8 @@ export const AgentDashboard: React.FC = () => {
 
       {/* Failure Reason Input Modal */}
       {failureOrderId && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleMarkFailed} className="bg-slate-900 border border-rose-700/60 p-6 rounded-2xl max-w-md w-full space-y-4 text-xs shadow-2xl animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <form onSubmit={handleMarkFailed} className="bg-slate-900 border border-rose-800/80 p-6 sm:p-7 rounded-3xl max-w-md w-full space-y-4 text-xs shadow-2xl modal-animate">
             <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
               <ShieldAlert className="w-5 h-5" />
               Record Delivery Attempt Failure
@@ -413,31 +427,31 @@ export const AgentDashboard: React.FC = () => {
               Please specify the exact reason for the failed delivery. This reason will be recorded on the delivery attempt and notified to the customer for rescheduling.
             </p>
             <div>
-              <label className="block text-slate-400 mb-1 font-medium">Failure Reason</label>
+              <label className="block text-slate-300 mb-1.5 font-semibold">Failure Reason</label>
               <textarea
                 required
                 rows={3}
                 value={failureReason}
                 onChange={(e) => setFailureReason(e.target.value)}
                 placeholder="e.g. Customer unavailable at address, phone unreachable after 3 attempts"
-                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-lg p-2.5 text-slate-100 placeholder-slate-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30 rounded-xl p-3 text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
               />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => {
                   setFailureOrderId(null);
                   setFailureReason('');
                 }}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg cursor-pointer transition-colors"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submittingFailure || !failureReason}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg disabled:opacity-50 cursor-pointer transition-colors"
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl disabled:opacity-50 cursor-pointer transition-all shadow-lg shadow-rose-600/25"
               >
                 {submittingFailure ? 'Submitting...' : 'Record Failure'}
               </button>
@@ -446,7 +460,6 @@ export const AgentDashboard: React.FC = () => {
         </div>,
         document.body
       )}
-
 
       {/* Order Detail Modal */}
       {selectedOrderId && (

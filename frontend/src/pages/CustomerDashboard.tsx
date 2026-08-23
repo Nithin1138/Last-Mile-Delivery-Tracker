@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ordersApi, extractErrorMessage } from '../api/client';
-import { useAuth } from '../context/AuthContext';
 import { Order } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { OrderDetailModal } from './OrderDetailModal';
+import { useAuth } from '../context/AuthContext';
 import { 
   Package, 
   Search, 
-  Plus, 
   Filter, 
+  Plus, 
   ArrowUpRight, 
+  Smartphone, 
   Phone, 
-  Check, 
+  ShieldCheck, 
   X, 
-  Bell, 
-  CheckCircle2,
-  Smartphone
+  Check, 
+  BellRing,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 
 interface Props {
@@ -28,92 +30,80 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-  // Phone number modal / settings state
+  // SMS Notifications Modal & Toast State
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
-  const [savingPhone, setSavingPhone] = useState(false);
-  const [phoneSuccess, setPhoneSuccess] = useState<string | null>(null);
+  const [inputPhone, setInputPhone] = useState(user?.phone || '');
+  const [phoneSaving, setPhoneSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const fetchOrders = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    setError(null);
+    try {
+      const data = await ordersApi.listOrders({
+        search: search.trim() || undefined,
+        status: statusFilter || undefined,
+      });
+      setOrders(data.orders);
+    } catch (err: any) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [search, statusFilter]);
+
+  // Keep phone input synced with logged-in user profile
+  useEffect(() => {
     if (user?.phone) {
-      setPhoneNumber(user.phone);
+      setInputPhone(user.phone);
     }
   }, [user?.phone]);
 
   const handleSavePhone = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingPhone(true);
     setPhoneError(null);
+    setPhoneSaving(true);
     try {
-      await updateProfile({ phone: phoneNumber.trim() });
+      await updateProfile({ phone: inputPhone.trim() || undefined });
       setIsPhoneModalOpen(false);
-      setPhoneSuccess('SMS alert mobile number updated successfully!');
-      setTimeout(() => setPhoneSuccess(null), 4000);
+      setToastMessage(inputPhone.trim() ? 'SMS alerts activated for ' + inputPhone.trim() : 'SMS alerts disabled');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 4000);
     } catch (err: any) {
       setPhoneError(extractErrorMessage(err));
     } finally {
-      setSavingPhone(false);
+      setPhoneSaving(false);
     }
   };
-
-  const fetchOrders = async (isBackground = false) => {
-    if (!isBackground) {
-      setLoading(true);
-      setError(null);
-    }
-    try {
-      const res = await ordersApi.listOrders({
-        status: statusFilter || undefined,
-        search: search || undefined,
-      });
-      setOrders(res.orders);
-    } catch (err: any) {
-      if (!isBackground) {
-        setError(extractErrorMessage(err));
-      }
-    } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchOrders();
-    }, 200);
-
-    const interval = setInterval(() => {
-      fetchOrders(true);
-    }, 12000);
-
-    return () => {
-      clearTimeout(handler);
-      clearInterval(interval);
-    };
-  }, [statusFilter, search]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-      {/* Toast notification rendered via Portal to always anchor to top-right viewport */}
-      {phoneSuccess && typeof document !== 'undefined' && createPortal(
-        <div className="fixed top-20 right-6 z-50 bg-slate-900/95 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-950/60 backdrop-blur-xl flex items-center gap-3 text-xs animate-in fade-in slide-in-from-top-3">
-          <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
+      {/* Toast Notification rendered at document.body via Portal */}
+      {showToast && typeof document !== 'undefined' && createPortal(
+        <div className="fixed top-20 right-6 z-50 max-w-sm w-full bg-slate-900/95 border border-indigo-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl flex items-center gap-3 toast-animate">
+          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+            <Check className="w-4 h-4" />
           </div>
-          <div className="space-y-0.5">
-            <div className="font-semibold text-white">Alert Settings Updated</div>
-            <div className="text-[11px] text-emerald-300/90">{phoneSuccess}</div>
+          <div className="text-xs text-slate-200 font-medium flex-1">
+            {toastMessage}
           </div>
-          <button
-            type="button"
-            onClick={() => setPhoneSuccess(null)}
-            className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors ml-2 cursor-pointer"
+          <button 
+            onClick={() => setShowToast(false)}
+            className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -121,22 +111,21 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
         document.body
       )}
 
-      {/* Header */}
+      {/* Header with Stats & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               <Package className="w-5 h-5" />
             </div>
-            My Deliveries
+            My Deliveries & Tracking
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Track packages, view immutable timeline history, and manage deliveries.
+            Real-time status updates, live agent tracking, and full immutable audit trail.
           </p>
         </div>
 
-        {/* Action Controls & SMS Alert Pill */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Sleek SMS Alert Status Pill */}
           <button
             type="button"
@@ -144,7 +133,7 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
               setPhoneError(null);
               setIsPhoneModalOpen(true);
             }}
-            className="group px-3 py-2 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 rounded-xl text-xs flex items-center gap-2.5 transition-all cursor-pointer shadow-sm"
+            className="group px-3.5 py-2 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 rounded-xl text-xs flex items-center gap-2.5 transition-all cursor-pointer shadow-sm"
             title="Configure real-time SMS delivery notifications"
           >
             <div className={`p-1 rounded-lg ${user?.phone ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
@@ -153,7 +142,7 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
             <div className="text-left flex items-center gap-1.5">
               <span className="text-[11px] text-slate-400 font-medium hidden xs:inline">SMS Alerts:</span>
               {user?.phone ? (
-                <span className="font-mono text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="font-mono text-emerald-400 font-bold flex items-center gap-1">
                   {user.phone}
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 </span>
@@ -168,7 +157,7 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
           {/* Primary Create Order Button */}
           <button
             onClick={onCreateOrderClick}
-            className="bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/25 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/25 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Create New Order
@@ -177,16 +166,24 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
       </div>
 
       {/* Filters & Search Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm backdrop-blur-sm">
+      <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-xl">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search destination address, area, or pincode..."
-            className="w-full bg-slate-950/70 border border-slate-800 focus:border-indigo-500/60 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors"
+            className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9.5 pr-8 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -194,9 +191,9 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-950/70 border border-slate-800 focus:border-indigo-500/60 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none cursor-pointer"
+            className="bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="">All Statuses</option>
+            <option value="">All Statuses ({orders.length})</option>
             <option value="CREATED">Created</option>
             <option value="ASSIGNED">Assigned</option>
             <option value="PICKED_UP">Picked Up</option>
@@ -211,44 +208,46 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
 
       {/* Orders Grid List */}
       {loading ? (
-        <div className="p-12 text-center text-slate-400 text-sm bg-slate-900/40 rounded-xl border border-slate-800 animate-pulse">
-          Loading your deliveries...
+        <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 flex flex-col items-center justify-center gap-3">
+          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <span>Loading your live deliveries...</span>
         </div>
       ) : error ? (
-        <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-xl text-rose-300 text-xs">
+        <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-2xl text-rose-300 text-xs shadow-lg">
           {error}
         </div>
       ) : orders.length === 0 ? (
-        <div className="p-12 text-center text-slate-400 text-sm bg-slate-900/40 rounded-xl border border-slate-800 space-y-3">
-          <Package className="w-10 h-10 text-slate-600 mx-auto" />
-          <div className="font-semibold text-slate-300">No deliveries found</div>
+        <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
+          <Package className="w-12 h-12 text-slate-600 mx-auto" />
+          <div className="font-bold text-slate-200 text-sm">No shipments found</div>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {search || statusFilter ? 'No orders match the current filter criteria.' : 'You have not placed any delivery requests yet.'}
           </p>
           <button
             onClick={onCreateOrderClick}
-            className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer pt-2"
+            className="text-xs text-indigo-400 hover:text-indigo-300 font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer pt-2 hover:scale-105"
           >
             <Plus className="w-3.5 h-3.5" />
             Create your first order
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {orders.map((order) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
+          {orders.map((order, idx) => (
             <div
               key={order.id}
               onClick={() => setSelectedOrderId(order.id)}
-              className="bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 rounded-xl p-5 shadow-sm hover:shadow-xl hover:shadow-indigo-950/20 transition-all cursor-pointer space-y-4 group flex flex-col justify-between"
+              style={{ animationDelay: `${idx * 40}ms` }}
+              className="bg-slate-900/80 border border-slate-800 card-hover-glow card-enter rounded-2xl p-5 shadow-lg cursor-pointer space-y-4 group flex flex-col justify-between backdrop-blur-xl"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-slate-200">#{order.id.slice(0, 8)}</span>
+                  <span className="font-mono text-xs font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">#{order.id.slice(0, 8)}</span>
                   <StatusBadge status={order.status} size="sm" />
                 </div>
 
                 <div className="space-y-1.5 text-xs">
-                  <div className="text-slate-300 truncate">
+                  <div className="text-slate-300 truncate font-medium">
                     <span className="text-slate-500">To: </span>
                     {order.drop_address}
                   </div>
@@ -257,21 +256,21 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 font-mono">
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 font-mono">
                   <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-sans">Chargeable</span>
+                    <span className="text-slate-500 block text-[10px] uppercase font-sans font-semibold">Chargeable</span>
                     <strong className="text-slate-200">{order.chargeable_weight_kg} kg</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-sans">Total</span>
-                    <strong className="text-emerald-400">₹{order.total_charge.toFixed(2)}</strong>
+                    <span className="text-slate-500 block text-[10px] uppercase font-sans font-semibold">Total</span>
+                    <strong className="text-emerald-400 font-bold">₹{order.total_charge.toFixed(2)}</strong>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 group-hover:text-indigo-300">
-                <span>{new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>
-                <span className="flex items-center gap-1 font-semibold text-[11px]">
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 group-hover:text-indigo-300 transition-colors">
+                <span className="font-mono text-[11px]">{new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>
+                <span className="flex items-center gap-1 font-bold text-[11px]">
                   View Timeline <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </span>
               </div>
@@ -282,97 +281,81 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
 
       {/* SMS Alert Settings Modal rendered via Portal */}
       {isPhoneModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 relative modal-animate">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-100">SMS Delivery Alerts</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Real-time SMS updates for your package movements
-                  </p>
+                  <p className="text-xs text-slate-400">Receive live automated status notifications</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPhoneModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {phoneError && (
-              <div className="bg-rose-950/40 border border-rose-800 p-2.5 rounded-xl text-xs text-rose-300">
-                {phoneError}
+            {/* Feature Highlights */}
+            <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-2 text-xs">
+              <div className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <BellRing className="w-3.5 h-3.5 text-indigo-400" />
+                Automated Twilio SMS Triggers:
               </div>
-            )}
+              <ul className="text-slate-400 space-y-1 pl-5 list-disc text-[11px]">
+                <li><strong className="text-slate-300">Agent Assigned:</strong> Fleet driver & ETA dispatch notification.</li>
+                <li><strong className="text-slate-300">Out for Delivery:</strong> Live arrival alert to customer.</li>
+                <li><strong className="text-slate-300">Delivered:</strong> Confirmation & delivery timestamp.</li>
+                <li><strong className="text-slate-300">Rescheduled / Failed:</strong> Attempt notes & updated slot.</li>
+              </ul>
+            </div>
 
             <form onSubmit={handleSavePhone} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Mobile Phone Number
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Mobile Number (with Country Code)
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                   <input
                     type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    value={inputPhone}
+                    onChange={(e) => setInputPhone(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors font-mono"
-                    autoFocus
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9.5 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">
-                  Include country code (e.g. <span className="font-mono text-slate-400">+91</span> for India).
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Format: <code className="font-mono text-slate-400">+91XXXXXXXXXX</code> or standard 10-digit number.
                 </p>
               </div>
 
-              {/* Notification Trigger Features */}
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 space-y-2">
-                <div className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Bell className="w-3.5 h-3.5 text-indigo-400" />
-                  Active SMS Triggers:
+              {phoneError && (
+                <div className="bg-rose-950/40 border border-rose-800 p-3 rounded-xl text-xs text-rose-300">
+                  {phoneError}
                 </div>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    Agent Assigned
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    Out for Delivery
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    Delivered Confirmation
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    Reschedule Alerts
-                  </div>
-                </div>
-              </div>
+              )}
 
               <div className="flex items-center justify-end gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsPhoneModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={savingPhone}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-indigo-600/20"
+                  disabled={phoneSaving}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white transition-all shadow-lg shadow-indigo-600/25 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  {savingPhone ? 'Saving...' : 'Save Mobile Number'}
+                  {phoneSaving ? 'Saving...' : 'Save Mobile Number'}
                 </button>
               </div>
             </form>
