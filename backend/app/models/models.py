@@ -448,17 +448,17 @@ def _prevent_delivery_attempt_delete(mapper, connection, target):
 @event.listens_for(DeliveryAttempt, "before_update")
 def _prevent_terminal_delivery_attempt_update(mapper, connection, target):
     import sqlalchemy as sa
-    state = sa.inspect(target)
-    history = state.attrs.status.history
-    if history.deleted:
-        orig_status = history.deleted[0]
-    else:
-        orig_status = target.status
+    if target.id:
+        db_status = connection.execute(
+            sa.select(DeliveryAttempt.status).where(DeliveryAttempt.id == target.id)
+        ).scalar()
+        if db_status in (DeliveryAttemptStatusEnum.DELIVERED, DeliveryAttemptStatusEnum.FAILED, "DELIVERED", "FAILED"):
+            val_str = db_status.value if hasattr(db_status, "value") else str(db_status).split(".")[-1]
+            raise ValueError(
+                f"DeliveryAttempt #{target.attempt_number} is in terminal status '{val_str}' and cannot be modified."
+            )
 
-    if orig_status in (DeliveryAttemptStatusEnum.DELIVERED, DeliveryAttemptStatusEnum.FAILED):
-        raise ValueError(
-            f"DeliveryAttempt #{target.attempt_number} is in terminal status '{orig_status.value}' and cannot be modified."
-        )
+
 
 
 

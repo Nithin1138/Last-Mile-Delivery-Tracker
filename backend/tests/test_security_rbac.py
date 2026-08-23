@@ -656,6 +656,56 @@ def test_terminal_delivery_attempt_orm_immutability_prevents_update(db):
     db.rollback()
 
 
+def test_pending_delivery_attempt_can_transition_to_terminal_then_locks(db):
+    """
+    Lifecycle validation: A PENDING DeliveryAttempt can be updated to record
+    completion/failure during its active execution, and immediately locks upon reaching terminal status.
+    """
+    from datetime import datetime, timezone
+    from app.models.models import DeliveryAttempt, Order, Zone, OrderTypeEnum, PaymentTypeEnum, DeliveryAttemptStatusEnum
+
+    zone = Zone(name="Lifecycle Attempt Zone")
+    user = User(email=f"lc_attempt_{uuid4().hex[:6]}@test.com", password_hash="pass", name="LC Attempt User", role=RoleEnum.CUSTOMER)
+    db.add_all([zone, user])
+    db.flush()
+
+    order = Order(
+        customer_id=user.id,
+        pickup_address="A", pickup_pincode="110001", pickup_zone_id=zone.id,
+        drop_address="B", drop_pincode="110001", drop_zone_id=zone.id,
+        length_cm=10, breadth_cm=10, height_cm=10,
+        actual_weight_kg=1, volumetric_weight_kg=0.2, chargeable_weight_kg=1,
+        base_charge=50, cod_charge=0, total_charge=50,
+        order_type=OrderTypeEnum.B2C, payment_type=PaymentTypeEnum.PREPAID,
+    )
+    db.add(order)
+    db.flush()
+
+    # 1. Created as PENDING
+    attempt = DeliveryAttempt(
+        order_id=order.id,
+        attempt_number=1,
+        status=DeliveryAttemptStatusEnum.PENDING,
+    )
+    db.add(attempt)
+    db.commit()
+
+    # 2. Active execution update: Transition from PENDING -> FAILED is allowed
+    attempt.status = DeliveryAttemptStatusEnum.FAILED
+    attempt.failure_reason = "Customer not at home"
+    attempt.completed_at = datetime.now(timezone.utc)
+    db.commit()
+
+    assert attempt.status == DeliveryAttemptStatusEnum.FAILED
+
+    # 3. Now that it is in terminal FAILED status, further updates are forbidden
+    with pytest.raises(ValueError, match="is in terminal status 'FAILED' and cannot be modified"):
+        attempt.failure_reason = "Tampered reason"
+        db.commit()
+    db.rollback()
+
+
+
 
 
 
