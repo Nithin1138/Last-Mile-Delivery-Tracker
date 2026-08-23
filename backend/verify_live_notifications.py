@@ -37,12 +37,12 @@ def verify_live_email():
         <h2 style="color: #4f46e5;">LastMile Flow Verification</h2>
         <p>This is a real live verification email sent from LastMile Delivery Platform.</p>
         <p><strong>Status:</strong> Live Transactional Delivery Confirmed ✅</p>
-        <p><strong>Recipient Phone:</strong> +919618484381</p>
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
         <p style="font-size: 12px; color: #64748b;">Automated verification test completed.</p>
     </div>
     """
-    success = provider.send_email(settings.RESEND_TEST_EMAIL or "test@example.com", subject, body)
+    recipient = settings.RESEND_TEST_EMAIL or "test@example.com"
+    success = provider.send_email(recipient, subject, body)
     if success:
         print("✅ Live Resend Email sent successfully!")
         return True
@@ -52,9 +52,9 @@ def verify_live_email():
 
 def verify_live_sms():
     print("\n📱 Testing Live Twilio SMS Dispatch...")
-    print(f"   Account SID: {settings.TWILIO_ACCOUNT_SID[:6]}... (configured)")
+    print(f"   Account SID: {settings.TWILIO_ACCOUNT_SID[:6] if settings.TWILIO_ACCOUNT_SID else 'None'}... (configured)")
     print(f"   From Number: {settings.TWILIO_FROM_NUMBER}")
-    print(f"   To / Test Phone: {settings.TWILIO_TEST_PHONE}")
+    print(f"   To / Test Phone: {settings.TWILIO_TEST_PHONE or '+91XXXXXXXXXX'}")
     
     provider = get_sms_provider()
     print(f"   Active Provider: {provider.__class__.__name__}")
@@ -63,14 +63,16 @@ def verify_live_sms():
         print("❌ Error: Active provider is not TwilioSmsProvider. Check TWILIO credentials.")
         return False
         
-    message = "LastMile Flow: Order tracking alert for +919618484381. Status: VERIFIED"
-    success = provider.send_sms(settings.TWILIO_TEST_PHONE or "+919618484381", message)
+    target_phone = settings.TWILIO_TEST_PHONE or "+91XXXXXXXXXX"
+    message = "LastMile Flow: Order tracking alert verification. Status: VERIFIED"
+    success = provider.send_sms(target_phone, message)
     if success:
-        print("✅ Live Twilio SMS sent successfully to +919618484381!")
+        print(f"✅ Live Twilio SMS sent successfully to {target_phone}!")
         return True
     else:
         print("⚠️ Live Twilio SMS dispatch attempted against real Twilio REST API.")
         return False
+
 
 
 if __name__ == "__main__":

@@ -3,8 +3,8 @@
 **Date**: 2026-08-23  
 **Verified Providers**: Resend API (Transactional HTML Email) & Twilio REST API (SMS)  
 **Verification Script**: `backend/verify_live_notifications.py`  
-**Test Recipient Phone**: `+919618484381`  
-**Test Recipient Email**: `veeranithin9@gmail.com`  
+**Test Recipient Phone**: `+91XXXXXXXXXX` (Redacted)  
+**Test Recipient Email**: `test@example.com` (Redacted)  
 
 ---
 
@@ -15,7 +15,7 @@
 - **API Endpoint**: `https://api.resend.com/emails` (via `resend` Python SDK v2.6.0)
 - **API Key Format**: `re_9c7jDcV1...`
 - **Sender Address**: `onboarding@resend.dev`
-- **Recipient Handling**: Configured with `RESEND_TEST_EMAIL=veeranithin9@gmail.com`.
+- **Recipient Handling**: Configured with `RESEND_TEST_EMAIL` redirect for developer testing.
 
 ### B. Live Request & Response Evidence
 - **Execution Command**: `python verify_live_notifications.py`
@@ -24,15 +24,15 @@
   ```json
   {
     "from": "onboarding@resend.dev",
-    "to": ["veeranithin9@gmail.com"],
+    "to": ["test@example.com"],
     "subject": "📦 LastMile Flow - Live Verification Test",
     "html": "<div><h2>LastMile Flow Verification</h2>...</div>"
   }
   ```
 - **API Gateway Response (Live)**:
   ```
-  Resend email failed to=veeranithin9@gmail.com: You have reached your daily email sending quota.
-  2026-08-23 18:35:03,864 [EMAIL_NOTIFICATION_FAILED] channel=resend to=veeranithin9@gmail.com error=You have reached your daily email sending quota.
+  Resend email failed to=test@example.com: You have reached your daily email sending quota.
+  2026-08-23 18:35:03,864 [EMAIL_NOTIFICATION_FAILED] channel=resend to=test@example.com error=You have reached your daily email sending quota.
   ```
 - **Verification Verdict**: ✅ **Authenticated & Connected**. Real API connection confirmed. The Resend API actively validated the API key, resolved the recipient, and returned its quota response.
 
@@ -45,7 +45,7 @@
 - **API Endpoint**: `POST https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json`
 - **Authentication**: HTTP Basic Auth (`Account SID` + `Auth Token`)
 - **Sender Phone**: `+17372508034`
-- **Destination Phone**: `+919618484381`
+- **Destination Phone**: `+91XXXXXXXXXX` (Redacted)
 
 ### B. Live Request & Response Evidence
 - **Execution Command**: `python verify_live_notifications.py`
@@ -56,7 +56,7 @@
   Authorization: Basic [REDACTED_CREDENTIALS]
   Content-Type: application/x-www-form-urlencoded
 
-  To=%2B919618484381&From=%2B17372508034&Body=LastMile+Flow%3A+Order+tracking+alert+for+%2B919618484381.+Status%3A+VERIFIED
+  To=%2B91XXXXXXXXXX&From=%2B17372508034&Body=LastMile+Flow%3A+Order+tracking+alert+verification.+Status%3A+VERIFIED
   ```
 - **API Gateway Response (Live)**:
   ```json
@@ -70,7 +70,7 @@
     "status": 400
   }
   ```
-- **Verification Verdict**: ✅ **Authenticated & Connected**. Real Twilio REST API connection confirmed. Twilio received, authenticated, and processed the request from `+17372508034` to `+919618484381`.
+- **Verification Verdict**: ✅ **Authenticated & Connected**. Real Twilio REST API connection confirmed. Twilio received, authenticated, and processed the request from `+17372508034` to `+91XXXXXXXXXX`.
 
 ---
 
@@ -80,3 +80,4 @@ When external provider limits or trial restrictions occur, the application's tra
 1. **Zero Core Transaction Abort**: Main database transactions (`orders`, `order_status_history`, `delivery_attempts`) commit cleanly.
 2. **Audit Logging**: A structured row is written to `notifications` with `status = FAILED` or `status = SENT`, storing the provider's exact error message for retry/monitoring.
 3. **Database Row Immutability**: All notification audit records are protected by PostgreSQL triggers (`trg_immutable_notifications`) and SQLAlchemy ORM event listeners forbidding updates and deletions.
+
