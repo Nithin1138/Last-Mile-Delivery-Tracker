@@ -554,11 +554,57 @@ def test_database_triggers_prevent_raw_sql_audit_log_mutations(db):
         db.commit()
     db.rollback()
 
-    # Raw SQL DELETE on notifications -> Must fail via trigger
+    # 3. Raw SQL insert into delivery_attempts
+    attempt_id = uuid4()
+    db.execute(text(f"""
+        INSERT INTO delivery_attempts (id, order_id, attempt_number, status, created_at)
+        VALUES ('{attempt_id}', '{order.id}', 1, 'PENDING', NOW())
+    """))
+    db.commit()
+
+    # Raw SQL DELETE on delivery_attempts -> Must fail via trigger
     with pytest.raises((InternalError, DBAPIError), match="strictly append-only"):
-        db.execute(text(f"DELETE FROM notifications WHERE id = '{notif_id}'"))
+        db.execute(text(f"DELETE FROM delivery_attempts WHERE id = '{attempt_id}'"))
         db.commit()
     db.rollback()
+
+
+def test_delivery_attempt_orm_immutability_prevents_deletion(db):
+    """DeliveryAttempt objects cannot be deleted via ORM sessions."""
+    import pytest
+    from app.models.models import DeliveryAttempt, Order, Zone, OrderTypeEnum, PaymentTypeEnum, DeliveryAttemptStatusEnum
+
+    zone = Zone(name="Attempt Immut Zone")
+    user = User(email=f"attempt_immut_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Attempt Immut User", role=RoleEnum.CUSTOMER)
+    db.add_all([zone, user])
+    db.flush()
+
+    order = Order(
+        customer_id=user.id,
+        pickup_address="A", pickup_pincode="110001", pickup_zone_id=zone.id,
+        drop_address="B", drop_pincode="110001", drop_zone_id=zone.id,
+        length_cm=10, breadth_cm=10, height_cm=10,
+        actual_weight_kg=1, volumetric_weight_kg=0.2, chargeable_weight_kg=1,
+        base_charge=50, cod_charge=0, total_charge=50,
+        order_type=OrderTypeEnum.B2C, payment_type=PaymentTypeEnum.PREPAID,
+    )
+    db.add(order)
+    db.flush()
+
+    attempt = DeliveryAttempt(
+        order_id=order.id,
+        attempt_number=1,
+        status=DeliveryAttemptStatusEnum.FAILED,
+        failure_reason="Customer unreachable",
+    )
+    db.add(attempt)
+    db.commit()
+
+    with pytest.raises(ValueError, match="immutable audit artifacts and cannot be deleted"):
+        db.delete(attempt)
+        db.commit()
+    db.rollback()
+
 
 
 

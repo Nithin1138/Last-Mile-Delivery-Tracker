@@ -333,64 +333,74 @@ def test_concurrent_assignment_same_order(db):
         a2 = verify_db.query(DeliveryAgent).filter(DeliveryAgent.id == agent2_id).first()
         loads = {a1.current_load, a2.current_load}
         assert loads == {0, 1}
-
-
 def test_real_multithreaded_initial_rate_card_creation_race():
     """
-    True PostgreSQL Concurrency Integration Test:
-    Spawns 2 concurrent worker threads with separate DB connections attempting to create
-    the initial active rate card for B2C INTER simultaneously.
+    True PostgreSQL Concurrency Integration Test through the FastAPI HTTP Endpoint:
+    Spawns 2 concurrent worker threads with separate DB connections sending POST /api/admin/rate-cards
+    simultaneously to create the initial active rate card for B2C INTER.
 
-    PostgreSQL partial unique constraint uq_rate_cards_one_active_per_type guarantees
-    that exactly 1 active card is preserved in the database.
+    Guarantees:
+    - Exactly 1 active card is created in PostgreSQL (uq_rate_cards_one_active_per_type).
+    - Concurrent collision is cleanly caught by the endpoint handler and returned as structured 409 Conflict.
     """
-    from sqlalchemy.exc import IntegrityError
+    from fastapi.testclient import TestClient
+    from app.database import get_db
+    from app.main import app
+    from app.core.security import create_access_token, hash_password
+
+    # 1. Create and commit an admin user visible to all worker sessions
+    admin_id = uuid.uuid4()
+    with TestingSessionLocal() as setup_db:
+        admin_user = User(
+            id=admin_id,
+            email=f"concur_admin_{uuid.uuid4().hex[:6]}@test.com",
+            password_hash=hash_password("adminpass123"),
+            name="Concurrent Admin",
+            role=RoleEnum.ADMIN,
+        )
+        setup_db.add(admin_user)
+        setup_db.commit()
+
+
+    token = create_access_token({"sub": str(admin_id), "role": "ADMIN"})
+
+    def thread_safe_get_db():
+        s = TestingSessionLocal()
+        try:
+            yield s
+        finally:
+            s.close()
+
+    app.dependency_overrides[get_db] = thread_safe_get_db
 
     barrier = threading.Barrier(2)
 
-    def worker_create_card() -> dict:
+    def worker_http_post() -> dict:
         barrier.wait()
-        with TestingSessionLocal() as session:
-            try:
-                existing = (
-                    session.query(RateCard)
-                    .filter(RateCard.order_type == OrderTypeEnum.B2C, RateCard.zone_type == ZoneRelationEnum.INTER, RateCard.is_active == True)
-                    .with_for_update()
-                    .first()
-                )
-                version = 1
-                if existing:
-                    existing.is_active = False
-                    version = existing.version + 1
-
-                card = RateCard(
-                    order_type=OrderTypeEnum.B2C,
-                    zone_type=ZoneRelationEnum.INTER,
-                    base_fee=120.0,
-                    rate_per_kg=40.0,
-                    version=version,
-                )
-                session.add(card)
-                session.commit()
-                return {"success": True, "version": card.version}
-            except IntegrityError:
-                session.rollback()
-                return {"success": False, "error": "INTEGRITY_CONFLICT"}
-            except Exception as e:
-                session.rollback()
-                return {"success": False, "error": str(e)}
+        http_client = TestClient(app)
+        res = http_client.post(
+            "/api/admin/rate-cards",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "order_type": "B2C",
+                "zone_type": "INTER",
+                "base_fee": 120.0,
+                "rate_per_kg": 40.0,
+            },
+        )
+        return {"status_code": res.status_code, "data": res.json()}
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        f1 = executor.submit(worker_create_card)
-        f2 = executor.submit(worker_create_card)
+        f1 = executor.submit(worker_http_post)
+        f2 = executor.submit(worker_http_post)
         r1 = f1.result()
         r2 = f2.result()
 
-    results = [r1, r2]
-    successes = [r for r in results if r["success"]]
-    assert len(successes) >= 1
+    app.dependency_overrides.clear()
 
-
+    status_codes = [r1["status_code"], r2["status_code"]]
+    assert 200 in status_codes
+    assert all(code in [200, 409] for code in status_codes)
 
     # Verify that in the database, exactly ONE active card exists for B2C INTER
     with TestingSessionLocal() as verify_db:
@@ -400,5 +410,7 @@ def test_real_multithreaded_initial_rate_card_creation_race():
             RateCard.is_active == True,
         ).all()
         assert len(active_cards) == 1
+
+
 
 

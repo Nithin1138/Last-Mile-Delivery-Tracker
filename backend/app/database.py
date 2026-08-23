@@ -56,7 +56,13 @@ DROP TRIGGER IF EXISTS trg_immutable_notifications ON notifications;
 CREATE TRIGGER trg_immutable_notifications
 BEFORE UPDATE OR DELETE ON notifications
 FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+
+DROP TRIGGER IF EXISTS trg_immutable_delivery_attempts_delete ON delivery_attempts;
+CREATE TRIGGER trg_immutable_delivery_attempts_delete
+BEFORE DELETE ON delivery_attempts
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
 """
+
 
 
 def install_immutability_triggers(bind=None):

@@ -440,6 +440,12 @@ class DeliveryAttempt(Base):
     agent = relationship("DeliveryAgent", foreign_keys=[agent_id])
 
 
+@event.listens_for(DeliveryAttempt, "before_delete")
+def _prevent_delivery_attempt_delete(mapper, connection, target):
+    raise ValueError("DeliveryAttempt records are immutable audit artifacts and cannot be deleted.")
+
+
+
 # ---------------------------------------------------------------------------
 # Assignment Decisions (audit trail)
 # ---------------------------------------------------------------------------
