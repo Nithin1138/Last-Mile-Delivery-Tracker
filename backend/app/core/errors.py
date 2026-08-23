@@ -7,11 +7,14 @@ from fastapi.responses import JSONResponse
 class ErrorCodes:
     """Registry of all application error codes."""
 
-    # Auth
+    # Auth / Users
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     EMAIL_ALREADY_EXISTS = "EMAIL_ALREADY_EXISTS"
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    USER_INACTIVE = "USER_INACTIVE"
+    INVALID_ROLE = "INVALID_ROLE"
 
     # Orders
     ORDER_NOT_FOUND = "ORDER_NOT_FOUND"

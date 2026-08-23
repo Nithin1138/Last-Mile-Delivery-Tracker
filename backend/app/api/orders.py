@@ -184,7 +184,36 @@ def create_order(
     # Determine customer (Admin can create on behalf of customer)
     customer_id = current_user.id
     if req.customer_id and current_user.role == RoleEnum.ADMIN:
-        customer_id = UUID(req.customer_id)
+        try:
+            target_uuid = UUID(req.customer_id)
+        except (ValueError, AttributeError):
+            raise AppError(
+                code=ErrorCodes.INVALID_ORDER_DATA,
+                message="Invalid customer_id format.",
+                status_code=400,
+            )
+        target_user = db.query(User).filter(User.id == target_uuid).first()
+        if not target_user:
+            raise AppError(
+                code=ErrorCodes.USER_NOT_FOUND,
+                message="Specified customer does not exist.",
+                status_code=404,
+            )
+        if not target_user.is_active:
+            raise AppError(
+                code=ErrorCodes.USER_INACTIVE,
+                message="Specified customer account is inactive.",
+                status_code=400,
+            )
+        target_role = target_user.role.value if hasattr(target_user.role, 'value') else target_user.role
+        if target_role != RoleEnum.CUSTOMER.value:
+            raise AppError(
+                code=ErrorCodes.INVALID_ROLE,
+                message="Specified user is not a customer.",
+                status_code=400,
+            )
+        customer_id = target_user.id
+
 
     # Zone resolution
     pickup_area, pickup_zone = resolve_pincode_to_zone(db, req.pickup_pincode)
@@ -632,9 +661,14 @@ def reschedule_order(
             ).filter(DeliveryAgent.id == order.agent_id).first()
             agent_name = agent.user.name if agent and agent.user else "Agent"
             notify_order_assigned(db, order, customer, agent_name)
-    except AppError:
-        # No available agent right now — order stays RESCHEDULED for manual assignment
-        assignment_result = None
+    except AppError as e:
+        if e.code == ErrorCodes.NO_AVAILABLE_AGENT:
+            # Expected no-agent condition: order remains RESCHEDULED for manual assignment
+            assignment_result = None
+        else:
+            # Unexpected assignment errors must propagate to caller
+            raise
+
 
     db.commit()
 

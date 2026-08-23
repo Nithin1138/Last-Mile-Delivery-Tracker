@@ -281,3 +281,109 @@ def test_admin_config_get_routes_accessible_to_admin(client, db, admin_fixture, 
         "Admin should be able to list rate cards"
     assert client.get("/api/admin/cod-surcharges", headers=headers).status_code == 200, \
         "Admin should be able to list COD surcharges"
+
+
+def _setup_order_prerequisites(db):
+    zone = Zone(name="Sec Test Zone")
+    db.add(zone)
+    db.flush()
+    area = Area(pincode="110001", name="Sec Area", zone_id=zone.id, is_active=True)
+    rate = RateCard(
+        order_type=OrderTypeEnum.B2C,
+        zone_type=ZoneRelationEnum.INTRA,
+        base_fee=Decimal("50.00"),
+        rate_per_kg=Decimal("10.00"),
+        version=1,
+        is_active=True,
+    )
+    db.add_all([area, rate])
+    db.flush()
+    return zone
+
+
+def test_admin_create_order_for_nonexistent_customer_fails(client, db, admin_token):
+    """Admin creating an order for a nonexistent customer_id must fail with USER_NOT_FOUND (404)."""
+    _setup_order_prerequisites(db)
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    payload = {
+        "customer_id": "00000000-0000-0000-0000-000000000000",
+        "pickup_address": "123 Main St",
+        "pickup_pincode": "110001",
+        "drop_address": "456 Market St",
+        "drop_pincode": "110001",
+        "length_cm": 10,
+        "breadth_cm": 10,
+        "height_cm": 10,
+        "actual_weight_kg": 1,
+        "order_type": "B2C",
+        "payment_type": "PREPAID",
+    }
+    res = client.post("/api/orders", headers=headers, json=payload)
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "USER_NOT_FOUND"
+
+
+def test_admin_create_order_for_inactive_customer_fails(client, db, admin_token):
+    """Admin creating an order for an inactive customer account must fail with USER_INACTIVE (400)."""
+    _setup_order_prerequisites(db)
+    inactive_cust = User(
+        email=f"inactive_{uuid4().hex[:6]}@test.com",
+        password_hash="pass",
+        name="Inactive Customer",
+        role=RoleEnum.CUSTOMER,
+        is_active=False,
+    )
+    db.add(inactive_cust)
+    db.commit()
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    payload = {
+        "customer_id": str(inactive_cust.id),
+        "pickup_address": "123 Main St",
+        "pickup_pincode": "110001",
+        "drop_address": "456 Market St",
+        "drop_pincode": "110001",
+        "length_cm": 10,
+        "breadth_cm": 10,
+        "height_cm": 10,
+        "actual_weight_kg": 1,
+        "order_type": "B2C",
+        "payment_type": "PREPAID",
+    }
+    res = client.post("/api/orders", headers=headers, json=payload)
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "USER_INACTIVE"
+
+
+def test_admin_create_order_for_agent_user_fails(client, db, admin_token):
+    """Admin creating an order specifying an AGENT user id as customer must fail with INVALID_ROLE (400)."""
+    _setup_order_prerequisites(db)
+    agent_user = User(
+        email=f"agent_user_{uuid4().hex[:6]}@test.com",
+        password_hash="pass",
+        name="Agent User",
+        role=RoleEnum.AGENT,
+        is_active=True,
+    )
+    db.add(agent_user)
+    db.commit()
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    payload = {
+        "customer_id": str(agent_user.id),
+        "pickup_address": "123 Main St",
+        "pickup_pincode": "110001",
+        "drop_address": "456 Market St",
+        "drop_pincode": "110001",
+        "length_cm": 10,
+        "breadth_cm": 10,
+        "height_cm": 10,
+        "actual_weight_kg": 1,
+        "order_type": "B2C",
+        "payment_type": "PREPAID",
+    }
+    res = client.post("/api/orders", headers=headers, json=payload)
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "INVALID_ROLE"
+
+

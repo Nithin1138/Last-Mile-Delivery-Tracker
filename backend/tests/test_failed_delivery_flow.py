@@ -218,3 +218,120 @@ def test_reschedule_only_allowed_for_failed_orders(client, db):
     )
     assert res.status_code == 400
     assert res.json()["error"]["code"] == "INVALID_STATUS_TRANSITION"
+
+
+def test_reschedule_no_available_agent_leaves_order_rescheduled(client, db):
+    """When no agents are available during reschedule, the order successfully transitions to RESCHEDULED and returns assignment=None."""
+    zone = _setup_zone_and_rate(db)
+
+    customer = User(email="cust_noagent@failtest.com", password_hash=hash_password("pass"), name="Cust NoAgent", role=RoleEnum.CUSTOMER)
+    db.add(customer)
+    db.flush()
+    customer_token = create_access_token({"sub": str(customer.id), "role": "CUSTOMER"})
+
+    admin = User(email="admin_noagent@failtest.com", password_hash=hash_password("pass"), name="Admin NoAgent", role=RoleEnum.ADMIN)
+    db.add(admin)
+    db.flush()
+    admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
+
+    # Single agent with max_capacity = 1
+    agent_user, agent = _make_agent(db, zone, "Agent Sole", lat=28.6139, lon=77.2090)
+    agent.max_capacity = 1
+    db.commit()
+
+    agent_token = create_access_token({"sub": str(agent_user.id), "role": "AGENT"})
+
+    # Step 1: Create and assign order
+    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
+    order_id = res.json()["id"]
+
+    res = client.post(f"/api/orders/{order_id}/assign", headers={"Authorization": f"Bearer {admin_token}"}, json={"mode": "auto"})
+    assert res.status_code == 200
+
+    # Step 2: Drive order to FAILED
+    for status in ["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY"]:
+        client.post(f"/api/orders/{order_id}/status", headers={"Authorization": f"Bearer {agent_token}"}, json={"status": status})
+
+    client.post(
+        f"/api/orders/{order_id}/status",
+        headers={"Authorization": f"Bearer {agent_token}"},
+        json={"status": "FAILED", "failure_reason": "Customer premises locked"},
+    )
+
+    # Now make the only agent OFFLINE / INACTIVE so auto-assign will fail with NO_AVAILABLE_AGENT
+    agent.availability_status = AgentStatusEnum.OFFLINE
+    agent.is_active = False
+    db.commit()
+
+
+    # Step 3: Reschedule order
+    res = client.post(
+        f"/api/orders/{order_id}/reschedule",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={"new_scheduled_date": "2025-12-25T10:00:00", "reason": "Customer rescheduled"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["assignment"] is None
+    assert "No available agent" in data["message"]
+
+    # Verify order is now in RESCHEDULED status
+    res = client.get(f"/api/orders/{order_id}", headers={"Authorization": f"Bearer {customer_token}"})
+    assert res.status_code == 200
+    assert res.json()["status"] == "RESCHEDULED"
+
+
+def test_reschedule_unexpected_assignment_app_error_propagates(client, db, monkeypatch):
+    """Any unexpected AppError from auto_assign_order (other than NO_AVAILABLE_AGENT) must propagate without being swallowed."""
+    from app.core.errors import AppError, ErrorCodes
+
+    zone = _setup_zone_and_rate(db)
+
+    customer = User(email="cust_err@failtest.com", password_hash=hash_password("pass"), name="Cust Err", role=RoleEnum.CUSTOMER)
+    db.add(customer)
+    db.flush()
+    customer_token = create_access_token({"sub": str(customer.id), "role": "CUSTOMER"})
+
+    admin = User(email="admin_err@failtest.com", password_hash=hash_password("pass"), name="Admin Err", role=RoleEnum.ADMIN)
+    db.add(admin)
+    db.flush()
+    admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
+
+    agent_user, agent = _make_agent(db, zone, "Agent Err", lat=28.6139, lon=77.2090)
+    db.commit()
+
+    agent_token = create_access_token({"sub": str(agent_user.id), "role": "AGENT"})
+
+    # Step 1: Create and assign order
+    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
+    order_id = res.json()["id"]
+
+    res = client.post(f"/api/orders/{order_id}/assign", headers={"Authorization": f"Bearer {admin_token}"}, json={"mode": "auto"})
+    assert res.status_code == 200
+
+    # Step 2: Drive order to FAILED
+    for status in ["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY"]:
+        client.post(f"/api/orders/{order_id}/status", headers={"Authorization": f"Bearer {agent_token}"}, json={"status": status})
+
+    client.post(
+        f"/api/orders/{order_id}/status",
+        headers={"Authorization": f"Bearer {agent_token}"},
+        json={"status": "FAILED", "failure_reason": "Customer unreachable"},
+    )
+
+    # Monkeypatch auto_assign_order to simulate an unexpected internal business error
+    def mock_auto_assign(db, order, user_id):
+        raise AppError(code=ErrorCodes.INTERNAL_ERROR, message="Unexpected dispatch fault.", status_code=500)
+
+    monkeypatch.setattr("app.api.orders.auto_assign_order", mock_auto_assign)
+
+    # Step 3: Reschedule order — must raise 500 INTERNAL_ERROR and NOT swallow it
+    res = client.post(
+        f"/api/orders/{order_id}/reschedule",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={"new_scheduled_date": "2025-12-25T10:00:00"},
+    )
+    assert res.status_code == 500
+    assert res.json()["error"]["code"] == "INTERNAL_ERROR"
+    assert "Unexpected dispatch fault" in res.json()["error"]["message"]
+
