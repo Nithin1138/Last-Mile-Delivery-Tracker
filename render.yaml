@@ -15,7 +15,7 @@ services:
       - key: JWT_ALGORITHM
         value: HS256
       - key: CORS_ORIGINS
-        value: "https://lastmile-frontend.onrender.com,http://localhost:5173"
+        value: "https://lastmileflow.vercel.app,https://lastmile-frontend.onrender.com,http://localhost:5173"
       - key: SEED_IF_EMPTY
         value: "1"
       - key: APP_ENV
@@ -46,9 +46,10 @@ services:
     staticPublishPath: "./frontend/dist"
     envVars:
       - key: VITE_API_BASE_URL
-        value: "https://lastmile-backend.onrender.com"
+        value: "https://lastmile-backend-f1ma.onrender.com"
       - key: VITE_DEMO_MODE
         value: "false"
+
 
 databases:
   - name: lastmile-db

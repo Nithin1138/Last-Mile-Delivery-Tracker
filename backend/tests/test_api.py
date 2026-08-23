@@ -296,3 +296,33 @@ def test_concurrent_rate_card_versioning_preserves_single_active_invariant(clien
     assert len(active_cards) == 1
     assert active_cards[0].version == 2
 
+
+def test_first_rate_card_concurrent_creation_race_returns_409_conflict(client, db, admin_token, monkeypatch):
+    """
+    When concurrent creation of the initial active rate card encounters an IntegrityError,
+    it is cleanly caught and returned as structured 409 conflict.
+    """
+    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy.orm import Session
+
+    def mock_commit(self):
+        raise IntegrityError("duplicate key value violates unique constraint uq_rate_cards_one_active_per_type", params=None, orig=None)
+
+    monkeypatch.setattr(Session, "commit", mock_commit)
+
+    res = client.post(
+        "/api/admin/rate-cards",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "order_type": "B2C",
+            "zone_type": "INTRA",
+            "base_fee": 50.0,
+            "rate_per_kg": 10.0,
+        },
+    )
+    assert res.status_code == 409
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert "already exists" in res.json()["error"]["message"]
+
+
+

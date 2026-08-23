@@ -7,6 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
+from sqlalchemy.exc import IntegrityError
+
 
 from app.database import get_db
 from app.core.deps import require_admin, get_current_user
@@ -183,9 +185,18 @@ def create_rate_card(
         version=version,
     )
     db.add(card)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise AppError(
+            code=ErrorCodes.VALIDATION_ERROR,
+            message="An active rate card already exists for this order type and zone relation.",
+            status_code=409,
+        )
     db.refresh(card)
     return RateCardResponse(
+
         id=str(card.id), order_type=card.order_type.value, zone_type=card.zone_type.value,
         base_fee=float(card.base_fee), rate_per_kg=float(card.rate_per_kg),
         is_active=card.is_active, version=card.version,
@@ -376,21 +387,24 @@ def update_agent(
     if not agent:
         raise AppError(code=ErrorCodes.AGENT_NOT_FOUND, message="Delivery agent not found.", status_code=404)
 
-    if req.current_load is not None:
-        agent.current_load = req.current_load
-    if req.max_capacity is not None:
-        agent.max_capacity = req.max_capacity
     if req.availability_status is not None:
         agent.availability_status = req.availability_status
+    if req.latitude is not None:
+        agent.latitude = req.latitude
+    if req.longitude is not None:
+        agent.longitude = req.longitude
     if req.zone_id is not None:
         agent.current_zone_id = _parse_uuid(req.zone_id, "zone ID") if req.zone_id else None
     if req.max_capacity is not None:
         agent.max_capacity = req.max_capacity
+    if req.current_load is not None:
+        agent.current_load = req.current_load
     if req.is_active is not None:
         agent.is_active = req.is_active
 
     db.commit()
     db.refresh(agent)
+
 
     return AgentResponse(
         id=str(agent.id), user_id=str(agent.user_id),

@@ -387,3 +387,110 @@ def test_admin_create_order_for_agent_user_fails(client, db, admin_token):
     assert res.json()["error"]["code"] == "INVALID_ROLE"
 
 
+def test_admin_update_agent_persists_coordinates_and_all_fields(client, db, admin_token):
+    """Admin updating delivery agent coordinates, capacity, load, status, and zone must persist cleanly."""
+    from app.models.models import Zone, DeliveryAgent, AgentStatusEnum
+
+    zone = Zone(name="Agent Update Zone")
+    db.add(zone)
+    db.flush()
+
+    user = User(
+        email=f"agent_up_{uuid4().hex[:6]}@test.com",
+        password_hash="pass",
+        name="Agent Update Target",
+        role=RoleEnum.AGENT,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    agent = DeliveryAgent(
+        user_id=user.id,
+        latitude=28.6000,
+        longitude=77.2000,
+        max_capacity=5,
+        current_load=1,
+        availability_status=AgentStatusEnum.AVAILABLE,
+        is_active=True,
+    )
+    db.add(agent)
+    db.commit()
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    update_payload = {
+        "latitude": 28.6543,
+        "longitude": 77.2345,
+        "max_capacity": 8,
+        "current_load": 2,
+        "availability_status": "BUSY",
+        "zone_id": str(zone.id),
+        "is_active": True,
+    }
+
+    res = client.patch(f"/api/admin/agents/{agent.id}", headers=headers, json=update_payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["latitude"] == 28.6543
+    assert data["longitude"] == 77.2345
+    assert data["max_capacity"] == 8
+    assert data["current_load"] == 2
+    assert data["availability_status"] == "BUSY"
+    assert data["current_zone_id"] == str(zone.id)
+
+    # Verify DB persistence
+    db.refresh(agent)
+    assert agent.latitude == 28.6543
+    assert agent.longitude == 77.2345
+    assert agent.max_capacity == 8
+    assert agent.current_load == 2
+    assert agent.availability_status == AgentStatusEnum.BUSY
+    assert agent.current_zone_id == zone.id
+
+
+def test_status_history_immutability_prevents_update_and_delete(db):
+    """OrderStatusHistory rows are strictly append-only; updates and deletions must raise ValueError."""
+    import pytest
+    from app.models.models import OrderStatusHistory, Order, Zone, OrderTypeEnum, PaymentTypeEnum
+
+    zone = Zone(name="Immutability Zone")
+    user = User(email=f"immut_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Immut User", role=RoleEnum.CUSTOMER)
+    db.add_all([zone, user])
+    db.flush()
+
+    order = Order(
+        customer_id=user.id,
+        pickup_address="A", pickup_pincode="110001", pickup_zone_id=zone.id,
+        drop_address="B", drop_pincode="110001", drop_zone_id=zone.id,
+        length_cm=10, breadth_cm=10, height_cm=10,
+        actual_weight_kg=1, volumetric_weight_kg=0.2, chargeable_weight_kg=1,
+        base_charge=50, cod_charge=0, total_charge=50,
+        order_type=OrderTypeEnum.B2C, payment_type=PaymentTypeEnum.PREPAID,
+    )
+    db.add(order)
+    db.flush()
+
+    history = OrderStatusHistory(
+        order_id=order.id,
+        previous_status=None,
+        new_status="CREATED",
+        changed_by=user.id,
+        reason="Initial order placement",
+    )
+    db.add(history)
+    db.commit()
+
+    # Attempt to delete history record -> must fail
+    with pytest.raises(ValueError, match="strictly append-only"):
+        db.delete(history)
+        db.commit()
+    db.rollback()
+
+    # Attempt to modify existing history record -> must fail
+    with pytest.raises(ValueError, match="strictly append-only"):
+        history.new_status = "TAMPERED"
+        db.commit()
+    db.rollback()
+
+
+

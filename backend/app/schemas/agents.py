@@ -21,7 +21,9 @@ class AgentUpdateRequest(BaseModel):
     longitude: Optional[float] = None
     zone_id: Optional[str] = None
     max_capacity: Optional[int] = Field(None, gt=0)
+    current_load: Optional[int] = Field(None, ge=0)
     is_active: Optional[bool] = None
+
 
 
 class AgentResponse(BaseModel):

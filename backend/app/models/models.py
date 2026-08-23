@@ -23,11 +23,13 @@ from sqlalchemy import (
     UniqueConstraint,
     Enum,
     Numeric,
+    event,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +385,18 @@ class OrderStatusHistory(Base):
     # Relationships
     order = relationship("Order", back_populates="status_history")
     actor = relationship("User", foreign_keys=[changed_by])
+
+
+# Immutability enforcement: strictly append-only audit log
+@event.listens_for(OrderStatusHistory, "before_update")
+def _prevent_status_history_update(mapper, connection, target):
+    raise ValueError("OrderStatusHistory records are strictly append-only. Updates are forbidden.")
+
+
+@event.listens_for(OrderStatusHistory, "before_delete")
+def _prevent_status_history_delete(mapper, connection, target):
+    raise ValueError("OrderStatusHistory records are strictly append-only. Deletions are forbidden.")
+
 
 
 # ---------------------------------------------------------------------------
