@@ -38,13 +38,10 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 
 4. Customer Login (Email: rohit.verma@gmail.com / Pass: customer123)
    ├── Open the order details → Notice Delivery Attempt #1 recorded as FAILED
-   ├── Click "Reschedule Delivery" → Select new delivery slot
-   └── Order status transitions to RESCHEDULED, ready for reassignment
+   ├── Click "Reschedule Delivery" → Select new delivery date
+   └── Atomic Execution: System transitions order FAILED ➔ RESCHEDULED ➔ ASSIGNED, releases Agent #1, auto-dispatches the nearest available Agent #2, creates Delivery Attempt #2, and sends transactional email/SMS notifications!
 
-5. Admin Login (Email: admin@lastmile.dev / Pass: admin123)
-   └── Reassign agent (Auto-Assign or Manual dispatch)
-
-6. Agent Login (Email: vikram.singh@delivery.dev / Pass: agent123)
+5. Agent Login (Assigned Agent)
    ├── Mark "Delivered" with proof/notes
    └── Open Order Details: Verify complete immutable history timeline and both Delivery Attempts (#1 FAILED, #2 DELIVERED)
 ```
@@ -70,7 +67,7 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (47 unit, security, integration, notification and concurrency tests)
+- **Testing**: Pytest (51 unit, security, integration, notification and concurrency tests)
 
 ---
 
@@ -78,8 +75,8 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 
 The platform includes production-ready transactional notification provider abstractions with graceful failure resilience:
 
-- **Email Provider** (`NotificationProvider` ➔ `ResendNotificationProvider`): Sends transactional HTML emails on order lifecycle events (Created, Assigned, Status Updates, Delivery Failed, Rescheduled). Configured via `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL`.
-- **SMS Provider** (`SmsProvider` ➔ `TwilioSmsProvider`): Sends instant SMS text alerts to customer mobile numbers via Twilio REST API. Configured via `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`.
+- **Email Provider** (`NotificationProvider` ➔ `ResendNotificationProvider`): Sends transactional HTML emails on order lifecycle events (Created, Assigned, Status Updates, Delivery Failed, Rescheduled). Configured via `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL`. (Supports `RESEND_TEST_EMAIL` for developer testing).
+- **SMS Provider** (`SmsProvider` ➔ `TwilioSmsProvider`): Sends instant SMS text alerts to customer mobile numbers via Twilio REST API. Configured via `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. (Supports `TWILIO_TEST_PHONE` for testing trial accounts).
 - **Zero-Config Local Evaluation**: Automatically falls back to `ConsoleNotificationProvider` and `ConsoleSmsProvider` when API keys are not present in `.env`, logging structured payloads without failing transactions.
 - **Fault-Tolerant & Audit Logged**: External provider downtimes never block core database transactions. Every notification attempt is tracked in the `notifications` audit table with delivery status (`SENT` / `FAILED`) and error details.
 
@@ -104,7 +101,7 @@ Pricing is 100% database-driven and adheres to courier industry standards:
    $$\text{Total} = \text{Base Charge} + \text{COD Charge}$$
 
 ### Immutable Historical Pricing Snapshots:
-When an order is created, all computed charge components are frozen on the `orders` record. Editing a rate card in the Admin portal deactivates the current version and inserts version $N+1$, ensuring historical orders never change price.
+When an order is created, all computed charge components are frozen on the `orders` record. Editing a rate card in the Admin portal deactivates the current version and inserts version $N+1$, ensuring historical orders never change price. A database-level partial unique index `uq_active_rate_card` strictly guarantees only one active card exists per `(order_type, zone_type)`.
 
 ---
 
@@ -132,6 +129,70 @@ WHERE id = :agent_id
 1. **Haversine Great-Circle Proximity**: Nearest agent to the pickup coordinates (GPS distance).
 2. **Zone Match Preference**: Same-zone agents preferred as tie-breaker.
 3. **Load Balancing**: Least-loaded eligible agents selected.
+
+---
+
+## 📋 Complete REST API Reference
+
+| Method | Endpoint | Access / Role | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | Public | Register customer account (strictly forces CUSTOMER role) |
+| `POST` | `/api/auth/login` | Public | Authenticate user & return JWT token |
+| `GET` | `/api/auth/me` | Authenticated | Fetch current user profile |
+| `PUT` | `/api/auth/me` | Authenticated | Update user profile / mobile number for SMS |
+| `POST` | `/api/orders/quote` | Public / Auth | Live rate preview calculation (L×B×H, weight, route) |
+| `POST` | `/api/orders` | Customer / Admin | Idempotent order creation with server-side price freeze |
+| `GET` | `/api/orders` | Customer / Admin | List orders (Admin views all; Customer views own) |
+| `GET` | `/api/orders/{id}` | Owner / Agent / Admin | Get order details and pricing breakdown |
+| `PATCH`| `/api/orders/{id}/status` | Agent / Admin | Transition order status (state-machine validated) |
+| `POST` | `/api/orders/{id}/assign` | Admin | Assign agent (Auto-dispatch nearest or Manual) |
+| `POST` | `/api/orders/{id}/reschedule` | Owner / Admin | Reschedule failed order & atomically reassign agent #2 |
+| `GET` | `/api/orders/{id}/timeline` | Owner / Agent / Admin | Immutable audit log of all status transitions |
+| `GET` | `/api/orders/{id}/attempts` | Owner / Agent / Admin | List all delivery attempts (#1 Failed, #2 Delivered) |
+| `GET` | `/api/orders/{id}/assignment-decision` | Owner / Agent / Admin | Explainable candidate ranking & distance decision |
+| `GET` | `/api/agents/me` | Delivery Agent | Fetch agent status, assigned zone, and current load |
+| `PUT` | `/api/agents/me` | Delivery Agent | Toggle availability status (`AVAILABLE` / `OFF_DUTY`) |
+| `GET` | `/api/admin/dashboard` | Admin Only | Real-time fleet metrics, active orders, COD stats |
+| `GET` | `/api/admin/agents` | Admin Only | List all fleet delivery agents with status & load |
+| `POST` | `/api/admin/agents` | Admin Only | Register new delivery agent with capacity & zone |
+| `GET` | `/api/admin/zones` | Admin Only | List logistics zones |
+| `POST` | `/api/admin/zones` | Admin Only | Create new logistics zone |
+| `GET` | `/api/admin/rate-cards` | Admin Only | List active and historical rate cards |
+| `POST` | `/api/admin/rate-cards` | Admin Only | Version and activate new rate card |
+| `GET` | `/api/admin/cod-surcharges` | Admin Only | List COD surcharge configurations |
+| `POST` | `/api/admin/cod-surcharges` | Admin Only | Update COD surcharge parameters |
+
+---
+
+## 🗄️ Database Schema & Invariants
+
+```
+               ┌───────────────┐
+               │     Users     │
+               └───────┬───────┘
+                       │ (1:N)
+         ┌─────────────┼─────────────┐
+         │             │             │
+         ▼             ▼             ▼
+   ┌───────────┐ ┌───────────┐ ┌───────────────┐
+   │  Orders   │ │   Zones   │ │DeliveryAgents │
+   └─────┬─────┘ └─────┬─────┘ └───────┬───────┘
+         │             │ (1:N)         │
+         │             ▼               │
+         │       ┌───────────┐         │
+         │       │   Areas   │         │
+         │       └───────────┘         │
+         ├─────────────────────────────┤
+         │                             │
+         ▼ (1:N) RESTRICT              ▼ (1:N)
+   ┌───────────────────┐        ┌───────────────────┐
+   │ OrderStatusHistory│        │ DeliveryAttempts  │
+   └───────────────────┘        └───────────────────┘
+```
+
+- **Partial Unique Index**: `uq_active_rate_card` enforces at database level that only 1 active rate card exists per `(order_type, zone_type)`.
+- **Append-Only History Protection**: `OrderStatusHistory` and `DeliveryAttempts` enforce `ondelete="RESTRICT"` to prevent cascade deletion.
+- **Actor-Scoped Idempotency**: `IdempotencyKey` stores `(user_id, key)` with a composite uniqueness constraint.
 
 ---
 
@@ -182,8 +243,9 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Test Suite Coverage (47 Tests):
-- `test_security_rbac.py` (6 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, and capacity boundaries.
+### Complete Test Suite Coverage (51 Tests):
+- `test_failed_delivery_flow.py` (2 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders.
+- `test_security_rbac.py` (8 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, and strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges.
 - `test_concurrency.py` (6 tests): True multithreaded PostgreSQL concurrent claim race conditions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via SELECT FOR UPDATE, capacity limits, release mechanics.
 - `test_pricing_engine.py` (8 tests): Volumetric weight, chargeable weight, B2B/B2C, INTRA/INTER rates, COD formulas, canonical worked example.
 - `test_order_lifecycle.py` (5 tests): State machine transitions, illegal transitions, cancellation rules, append-only history.
@@ -233,3 +295,4 @@ This produces a lightweight distribution archive `LastMileDeliveryTracker-Submis
 - [Requirements Mapping Matrix](docs/requirements-mapping.md)
 - [Engineering Trade-Offs](docs/tradeoffs.md)
 - [System Design Write-Up (Deliverable #4)](docs/system-design.md)
+
