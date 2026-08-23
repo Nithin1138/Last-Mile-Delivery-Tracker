@@ -556,7 +556,17 @@ def reschedule_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Reschedule a failed delivery — allowed for Customer (own order) or Admin."""
+    """Reschedule a failed delivery — allowed for Customer (own order) or Admin.
+
+    Complete failed-delivery flow:
+    1. Transition order FAILED → RESCHEDULED
+    2. Release previous agent (freed for new orders)
+    3. Auto-assign nearest available agent (creates Attempt #2)
+    4. Notify customer (rescheduled + new assignment)
+
+    If no agent is currently available, the order stays RESCHEDULED and can be
+    manually assigned via POST /api/orders/{id}/assign.
+    """
     order = db.query(Order).filter(Order.id == UUID(order_id)).first()
     if not order:
         raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
@@ -582,7 +592,7 @@ def reschedule_order(
             status_code=400,
         )
 
-    # Transition to RESCHEDULED
+    # Step 1: Transition to RESCHEDULED
     transition_order(
         db, order, OrderStatusEnum.RESCHEDULED.value,
         changed_by=current_user.id,
@@ -591,7 +601,7 @@ def reschedule_order(
 
     order.scheduled_date = new_date
 
-    # Release current agent load and clear assignment
+    # Step 2: Release previous agent
     if order.agent_id:
         release_agent(db, order.agent_id)
         order.agent_id = None
@@ -601,8 +611,45 @@ def reschedule_order(
     if customer:
         notify_order_rescheduled(db, order, customer, req.new_scheduled_date)
 
+    db.flush()  # Flush reschedule state before attempting assignment
+
+    # Step 3: Auto-assign nearest available agent (creates Attempt #2)
+    # Determine the actor for assignment — admin if admin triggered, otherwise system
+    assigning_user_id = current_user.id
+    assignment_result = None
+    try:
+        decision = auto_assign_order(db, order, assigning_user_id)
+        assignment_result = {
+            "agent_id": str(decision.selected_agent_id),
+            "mode": decision.selection_mode.value,
+            "distance_km": decision.selected_distance_km,
+            "reason": decision.reason,
+        }
+        # Step 4: Notify customer of new agent assignment
+        if customer and order.agent_id:
+            agent = db.query(DeliveryAgent).options(
+                joinedload(DeliveryAgent.user)
+            ).filter(DeliveryAgent.id == order.agent_id).first()
+            agent_name = agent.user.name if agent and agent.user else "Agent"
+            notify_order_assigned(db, order, customer, agent_name)
+    except AppError:
+        # No available agent right now — order stays RESCHEDULED for manual assignment
+        assignment_result = None
+
     db.commit()
-    return {"message": "Order rescheduled successfully. Ready for reassignment."}
+
+    if assignment_result:
+        return {
+            "message": "Order rescheduled and reassigned successfully.",
+            "new_scheduled_date": req.new_scheduled_date,
+            "assignment": assignment_result,
+        }
+    return {
+        "message": "Order rescheduled. No available agent at this time — use /assign to manually assign.",
+        "new_scheduled_date": req.new_scheduled_date,
+        "assignment": None,
+    }
+
 
 
 # ---------------------------------------------------------------------------

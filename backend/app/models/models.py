@@ -223,6 +223,15 @@ class RateCard(Base):
         CheckConstraint("base_fee >= 0", name="ck_rate_base_fee_non_negative"),
         CheckConstraint("rate_per_kg >= 0", name="ck_rate_per_kg_non_negative"),
         Index("ix_rate_cards_lookup", "order_type", "zone_type", "is_active"),
+        # Enforce at most one active rate card per (order_type, zone_type)
+        # PostgreSQL partial unique index — prevents ambiguous pricing from concurrent admin updates
+        Index(
+            "uq_rate_cards_one_active_per_type",
+            "order_type",
+            "zone_type",
+            unique=True,
+            postgresql_where="is_active = true",
+        ),
     )
 
 
@@ -355,7 +364,8 @@ class OrderStatusHistory(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     order_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("orders.id", ondelete="CASCADE"),
+        # RESTRICT: prevents order deletion while history exists — enforces immutable audit trail
+        ForeignKey("orders.id", ondelete="RESTRICT"),
         nullable=False,
     )
     previous_status = Column(String(30), nullable=True)

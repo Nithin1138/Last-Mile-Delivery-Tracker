@@ -66,16 +66,29 @@ If `rowcount == 0` (indicating another transaction claimed the agent in parallel
 Real-world logistics requires graceful recovery from failed delivery attempts without losing audit history.
 
 ```
-OUT_FOR_DELIVERY ──► Mark FAILED (+ reason) ──► Notify Customer ──► Customer Reschedules (New Date)
-                                                                            │
-DELIVERED ◄── OUT_FOR_DELIVERY ◄── IN_TRANSIT ◄── Reassign Agent ◄──────────┘
+OUT_FOR_DELIVERY ──► Mark FAILED (+ reason) ──► Notify Customer (Email + SMS)
+                                                          │
+                                              Customer Reschedules (New Date)
+                                                          │
+                          ┌───────────────────────────────┘
+                          │
+                    Release Agent #1 ──► Auto-Assign Nearest Agent #2
+                          │                       │
+                          │              Create DeliveryAttempt #2
+                          │                       │
+                    Notify Customer         ASSIGNED → PICKED_UP → IN_TRANSIT
+                    (Rescheduled + New       → OUT_FOR_DELIVERY → DELIVERED
+                     Agent Assigned)
 ```
 
-1. **Failure Recording**: When an agent marks a package `FAILED`, they must provide an explicit failure reason (e.g. *"Customer unavailable at premises"*).
-2. **Delivery Attempts Entity**: Rather than inferring attempt history by parsing status logs, each attempt is stored as a first-class row in `delivery_attempts` with start/completion timestamps, agent ID, and failure reason.
-3. **Rescheduling & Reassignment**:
-   - The customer or admin initiates rescheduling via `POST /api/orders/{id}/reschedule`, supplying a new target delivery timestamp.
-   - The order status transitions from `FAILED` to `RESCHEDULED`.
-   - The prior agent is released back to `AVAILABLE`.
-   - A new delivery attempt (`attempt_number = 2`) is initialized, and the order is immediately placed back in the eligible queue for auto or manual reassignment.
-4. **Immutable Audit History**: Every state transition generates an append-only row in `order_status_history`. Historical records are never updated or purged.
+1. **Failure Recording**: When an agent marks a package `FAILED`, they must provide an explicit failure reason (e.g. *"Customer unavailable at premises"*). The active `DeliveryAttempt` is closed with status `FAILED` and a completion timestamp.
+2. **Delivery Attempts Entity**: Each attempt is stored as a first-class row in `delivery_attempts` with start/completion timestamps, agent ID, and failure reason. Attempt #1 is never overwritten.
+3. **Rescheduling & Immediate Reassignment** (single API call — `POST /api/orders/{id}/reschedule`):
+   - The order transitions from `FAILED` → `RESCHEDULED`.
+   - The prior agent's capacity is released (atomically decremented, availability restored to `AVAILABLE`).
+   - The system immediately runs the auto-assignment pipeline: Haversine proximity ranking → zone match → load balance → atomic capacity claim.
+   - A new `DeliveryAttempt` row (`attempt_number = 2`) is created for the selected agent.
+   - The customer receives two notifications: rescheduled confirmation and new agent assignment.
+   - If no agent is currently available, the order remains `RESCHEDULED` and can be manually assigned via `POST /api/orders/{id}/assign`.
+4. **Immutable Audit History**: Every state transition generates an append-only row in `order_status_history`. The FK uses `ondelete='RESTRICT'` at database level, preventing order deletion while history rows exist. The application never exposes UPDATE or DELETE endpoints on history.
+

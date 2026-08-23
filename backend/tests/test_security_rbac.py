@@ -242,3 +242,42 @@ def test_multi_capacity_agent_claim_and_release(db):
     db.refresh(agent)
     assert agent.current_load == 2
     assert agent.availability_status == AgentStatusEnum.AVAILABLE
+
+
+def test_admin_config_get_routes_require_admin(client, db, customer_fixture, customer_token):
+    """Non-admin authenticated users MUST receive 403 on all admin configuration GET routes.
+
+    Verifies the fix for: GET /api/admin/zones, /api/admin/areas,
+    /api/admin/rate-cards, /api/admin/cod-surcharges all require admin role.
+    Previously these used get_current_user (any authenticated user could access).
+    """
+    headers = {"Authorization": f"Bearer {customer_token}"}
+
+    # All four admin config GET routes must reject non-admin users
+    assert client.get("/api/admin/zones", headers=headers).status_code == 403, \
+        "Customer should not be able to list zones"
+    assert client.get("/api/admin/areas", headers=headers).status_code == 403, \
+        "Customer should not be able to list areas"
+    assert client.get("/api/admin/rate-cards", headers=headers).status_code == 403, \
+        "Customer should not be able to list rate cards"
+    assert client.get("/api/admin/cod-surcharges", headers=headers).status_code == 403, \
+        "Customer should not be able to list COD surcharges"
+
+    # Unauthenticated requests also rejected (returns 403 — no credentials provided)
+    assert client.get("/api/admin/zones").status_code in [401, 403]
+    assert client.get("/api/admin/rate-cards").status_code in [401, 403]
+
+
+def test_admin_config_get_routes_accessible_to_admin(client, db, admin_fixture, admin_token):
+    """Admin users MUST be able to access all admin configuration GET routes."""
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # All four admin config GET routes must succeed for admin
+    assert client.get("/api/admin/zones", headers=headers).status_code == 200, \
+        "Admin should be able to list zones"
+    assert client.get("/api/admin/areas", headers=headers).status_code == 200, \
+        "Admin should be able to list areas"
+    assert client.get("/api/admin/rate-cards", headers=headers).status_code == 200, \
+        "Admin should be able to list rate cards"
+    assert client.get("/api/admin/cod-surcharges", headers=headers).status_code == 200, \
+        "Admin should be able to list COD surcharges"

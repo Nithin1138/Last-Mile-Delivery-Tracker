@@ -51,26 +51,34 @@ class ConsoleNotificationProvider(NotificationProvider):
 
 
 class ResendNotificationProvider(NotificationProvider):
-    """Sends real emails via Resend API."""
+    """Sends real emails via Resend API.
 
-    def __init__(self, api_key: str, from_email: str):
+    On a free/trial Resend account, emails can only be sent to the account
+    owner's email. Set RESEND_TEST_EMAIL in your .env to redirect all
+    notifications to that address during testing/development.
+    """
+
+    def __init__(self, api_key: str, from_email: str, test_email: Optional[str] = None):
         self.api_key = api_key
         self.from_email = from_email
+        self.test_email = test_email  # Override recipient for trial accounts
 
     def send_email(self, to_email: str, subject: str, body: str) -> bool:
         try:
             import resend
             resend.api_key = self.api_key
+            # Use test_email override if configured (Resend free tier restriction)
+            recipient = self.test_email if self.test_email else to_email
             resend.Emails.send({
                 "from": self.from_email,
-                "to": [to_email],
+                "to": [recipient],
                 "subject": subject,
                 "html": body,
             })
-            log_event("EMAIL_NOTIFICATION_SENT", channel="resend", to=to_email, subject=subject)
+            log_event("EMAIL_NOTIFICATION_SENT", channel="resend", to=recipient, subject=subject)
             return True
         except Exception as e:
-            logger.error(f"Resend email failed: {e}")
+            logger.error(f"Resend email failed to={to_email}: {e}")
             log_event(
                 "EMAIL_NOTIFICATION_FAILED",
                 channel="resend",
@@ -153,6 +161,7 @@ def get_notification_provider() -> NotificationProvider:
         return ResendNotificationProvider(
             api_key=settings.RESEND_API_KEY,
             from_email=settings.NOTIFICATION_FROM_EMAIL,
+            test_email=settings.RESEND_TEST_EMAIL,
         )
     return ConsoleNotificationProvider()
 

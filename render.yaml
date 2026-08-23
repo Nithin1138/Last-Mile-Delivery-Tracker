@@ -4,7 +4,7 @@ services:
     name: lastmile-backend
     runtime: python
     buildCommand: "cd backend && pip install -r requirements.txt"
-    startCommand: "cd backend && python seed.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "cd backend && SEED_IF_EMPTY=1 python seed.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: DATABASE_URL
         fromDatabase:

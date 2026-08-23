@@ -32,7 +32,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # Zones
 # ---------------------------------------------------------------------------
 @router.get("/zones", response_model=list[ZoneResponse])
-def list_zones(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_zones(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     zones = db.query(Zone).all()
     return [
         ZoneResponse(
@@ -69,7 +69,7 @@ def create_zone(
 def list_areas(
     zone_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     query = db.query(Area).options(joinedload(Area.zone))
     if zone_id:
@@ -119,7 +119,7 @@ def create_area(
 def list_rate_cards(
     active_only: bool = Query(True),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     query = db.query(RateCard)
     if active_only:
@@ -228,7 +228,7 @@ def update_rate_card(
 # COD Surcharges
 # ---------------------------------------------------------------------------
 @router.get("/cod-surcharges", response_model=list[CODSurchargeResponse])
-def list_cod_surcharges(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_cod_surcharges(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     surcharges = db.query(CODSurcharge).filter(CODSurcharge.is_active == True).all()
     return [
         CODSurchargeResponse(

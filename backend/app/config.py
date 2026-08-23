@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Notifications (Email & SMS)
     RESEND_API_KEY: Optional[str] = None
     NOTIFICATION_FROM_EMAIL: str = "noreply@lastmile.dev"
+    # Set RESEND_TEST_EMAIL to your Resend account email to receive all notifications
+    # during testing (Resend free tier only sends to the account owner's email)
+    RESEND_TEST_EMAIL: Optional[str] = None
     TWILIO_ACCOUNT_SID: Optional[str] = None
     TWILIO_AUTH_TOKEN: Optional[str] = None
     TWILIO_FROM_NUMBER: Optional[str] = None
