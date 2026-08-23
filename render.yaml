@@ -20,6 +20,8 @@ services:
         value: "1"
       - key: APP_ENV
         value: production
+      - key: PYTHON_VERSION
+        value: 3.12.8
 
   # Frontend Static Site
   - type: web
