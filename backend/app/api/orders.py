@@ -168,9 +168,16 @@ def create_order(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new order with server-side pricing calculation and atomic idempotency."""
-    # Fast path: Idempotency check in DB cache
+    # Fast path: Idempotency check in DB cache (scoped to current authenticated actor)
     if req.idempotency_key:
-        cached_idem = db.query(IdempotencyKey).filter(IdempotencyKey.key == req.idempotency_key).first()
+        cached_idem = (
+            db.query(IdempotencyKey)
+            .filter(
+                IdempotencyKey.user_id == current_user.id,
+                IdempotencyKey.key == req.idempotency_key,
+            )
+            .first()
+        )
         if cached_idem:
             return OrderResponse.model_validate_json(cached_idem.response_body)
 
@@ -240,9 +247,10 @@ def create_order(
     # Convert to response payload for caching
     response_payload = _order_to_response(order)
 
-    # Atomic DB-backed Idempotency key registration
+    # Atomic DB-backed Idempotency key registration scoped to current user
     if req.idempotency_key:
         idem_record = IdempotencyKey(
+            user_id=current_user.id,
             key=req.idempotency_key,
             response_status=200,
             response_body=response_payload.model_dump_json(),
@@ -253,12 +261,26 @@ def create_order(
         db.commit()
     except IntegrityError:
         db.rollback()
-        # Concurrent duplicate request with identical idempotency key — return the stored response cleanly!
+        # Concurrent duplicate request with identical idempotency key for this user — return the stored response cleanly!
         if req.idempotency_key:
-            existing = db.query(IdempotencyKey).filter(IdempotencyKey.key == req.idempotency_key).first()
+            existing = (
+                db.query(IdempotencyKey)
+                .filter(
+                    IdempotencyKey.user_id == current_user.id,
+                    IdempotencyKey.key == req.idempotency_key,
+                )
+                .first()
+            )
             if existing:
                 return OrderResponse.model_validate_json(existing.response_body)
-            existing_order = db.query(Order).filter(Order.idempotency_key == req.idempotency_key).first()
+            existing_order = (
+                db.query(Order)
+                .filter(
+                    Order.customer_id == current_user.id,
+                    Order.idempotency_key == req.idempotency_key,
+                )
+                .first()
+            )
             if existing_order:
                 return _order_to_response(existing_order)
         raise AppError(code=ErrorCodes.CONFLICT, message="Concurrent duplicate request.", status_code=409)

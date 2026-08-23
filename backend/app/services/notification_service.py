@@ -101,6 +101,52 @@ class ConsoleSmsProvider(SmsProvider):
         return True
 
 
+class TwilioSmsProvider(SmsProvider):
+    """Sends real SMS messages via Twilio REST API."""
+
+    def __init__(self, account_sid: str, auth_token: str, from_phone: str):
+        self.account_sid = account_sid
+        self.auth_token = auth_token
+        self.from_phone = from_phone
+
+    def send_sms(self, to_phone: str, message: str) -> bool:
+        try:
+            import httpx
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
+            response = httpx.post(
+                url,
+                auth=(self.account_sid, self.auth_token),
+                data={
+                    "To": to_phone,
+                    "From": self.from_phone,
+                    "Body": message,
+                },
+                timeout=5.0,
+            )
+            if response.status_code in [200, 201]:
+                log_event("SMS_NOTIFICATION_SENT", channel="twilio", to=to_phone, message=message)
+                return True
+            else:
+                logger.error(f"Twilio SMS failed with status {response.status_code}: {response.text}")
+                log_event(
+                    "SMS_NOTIFICATION_FAILED",
+                    channel="twilio",
+                    to=to_phone,
+                    status_code=response.status_code,
+                    error=response.text[:200],
+                )
+                return False
+        except Exception as e:
+            logger.error(f"Twilio SMS exception: {e}")
+            log_event(
+                "SMS_NOTIFICATION_FAILED",
+                channel="twilio",
+                to=to_phone,
+                error=str(e),
+            )
+            return False
+
+
 def get_notification_provider() -> NotificationProvider:
     """Factory — returns configured email notification provider."""
     if settings.RESEND_API_KEY:
@@ -113,6 +159,12 @@ def get_notification_provider() -> NotificationProvider:
 
 def get_sms_provider() -> SmsProvider:
     """Factory — returns configured SMS notification provider."""
+    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER:
+        return TwilioSmsProvider(
+            account_sid=settings.TWILIO_ACCOUNT_SID,
+            auth_token=settings.TWILIO_AUTH_TOKEN,
+            from_phone=settings.TWILIO_FROM_NUMBER,
+        )
     return ConsoleSmsProvider()
 
 

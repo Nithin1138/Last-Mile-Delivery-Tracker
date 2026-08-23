@@ -14,9 +14,12 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
-    # Notifications
+    # Notifications (Email & SMS)
     RESEND_API_KEY: Optional[str] = None
     NOTIFICATION_FROM_EMAIL: str = "noreply@lastmile.dev"
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_FROM_NUMBER: Optional[str] = None
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"

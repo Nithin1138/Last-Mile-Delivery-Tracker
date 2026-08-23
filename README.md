@@ -70,7 +70,18 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (41 unit, security, integration and concurrency tests)
+- **Testing**: Pytest (47 unit, security, integration, notification and concurrency tests)
+
+---
+
+## 🔔 Notification Engine (Email & SMS)
+
+The platform includes production-ready transactional notification provider abstractions with graceful failure resilience:
+
+- **Email Provider** (`NotificationProvider` ➔ `ResendNotificationProvider`): Sends transactional HTML emails on order lifecycle events (Created, Assigned, Status Updates, Delivery Failed, Rescheduled). Configured via `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL`.
+- **SMS Provider** (`SmsProvider` ➔ `TwilioSmsProvider`): Sends instant SMS text alerts to customer mobile numbers via Twilio REST API. Configured via `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`.
+- **Zero-Config Local Evaluation**: Automatically falls back to `ConsoleNotificationProvider` and `ConsoleSmsProvider` when API keys are not present in `.env`, logging structured payloads without failing transactions.
+- **Fault-Tolerant & Audit Logged**: External provider downtimes never block core database transactions. Every notification attempt is tracked in the `notifications` audit table with delivery status (`SENT` / `FAILED`) and error details.
 
 ---
 
@@ -171,15 +182,16 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Test Suite Coverage (41 Tests):
+### Test Suite Coverage (47 Tests):
 - `test_security_rbac.py` (6 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, and capacity boundaries.
 - `test_concurrency.py` (6 tests): True multithreaded PostgreSQL concurrent claim race conditions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via SELECT FOR UPDATE, capacity limits, release mechanics.
 - `test_pricing_engine.py` (8 tests): Volumetric weight, chargeable weight, B2B/B2C, INTRA/INTER rates, COD formulas, canonical worked example.
 - `test_order_lifecycle.py` (5 tests): State machine transitions, illegal transitions, cancellation rules, append-only history.
 - `test_assignment_engine.py` (5 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, fallback handling.
+- `test_notifications.py` (5 tests): Resend email provider, Twilio SMS provider, Console provider fallbacks, graceful error and network failure handling.
+- `test_api.py` (4 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze.
 - `test_zone_service.py` (4 tests): Pincode resolution, unknown pincode rejection, inactive area rejection.
 - `test_distance.py` (4 tests): Haversine accuracy (Delhi–Mumbai sanity check).
-- `test_api.py` (3 tests): RBAC server-side enforcement, idempotency key duplicate prevention, rate card versioning price freeze.
 
 ---
 
@@ -195,7 +207,11 @@ This repository includes a [`render.yaml`](render.yaml) specification:
 - **Backend Dockerfile**: [`backend/Dockerfile`](backend/Dockerfile)
   ```bash
   docker build -t lastmile-backend backend/
-  docker run -p 8000:8000 -e DATABASE_URL="postgresql://..." lastmile-backend
+  docker run -p 8000:8000 \
+    -e DATABASE_URL="postgresql://user:pass@host:5432/delivery_tracker" \
+    -e JWT_SECRET_KEY="your-secure-jwt-secret-key-at-least-32-chars" \
+    -e CORS_ORIGINS="http://localhost:5173" \
+    lastmile-backend
   ```
 
 ---

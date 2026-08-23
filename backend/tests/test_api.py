@@ -84,6 +84,87 @@ def test_idempotent_order_creation(client, db, customer_token):
     assert total_orders == 1
 
 
+def test_idempotency_scoped_to_user_allows_different_users_same_key(client, db, customer_token):
+    """
+    Two distinct users submitting with the same idempotency key create distinct orders
+    and never leak each other's cached responses.
+    """
+    # Create second customer
+    from app.models.models import User, RoleEnum
+    from app.core.security import hash_password, create_access_token
+    user2 = User(
+        email="customer2@lastmile.dev",
+        password_hash=hash_password("pass123"),
+        name="Customer Two",
+        role=RoleEnum.CUSTOMER,
+    )
+    db.add(user2)
+    db.flush()
+    customer2_token = create_access_token({"sub": str(user2.id), "role": user2.role.value})
+
+    # Setup zone & area
+    zone = Zone(name="Idemp Zone 2")
+    db.add(zone)
+    db.flush()
+    area = Area(pincode="110088", name="Area 88", zone_id=zone.id, is_active=True)
+    rate_card = RateCard(
+        order_type=OrderTypeEnum.B2C,
+        zone_type=ZoneRelationEnum.INTRA,
+        base_fee=Decimal("40.00"),
+        rate_per_kg=Decimal("15.00"),
+        version=1,
+        is_active=True,
+    )
+    db.add_all([area, rate_card])
+    db.flush()
+
+    shared_key = "shared-idem-key-999"
+    payload1 = {
+        "pickup_address": "Customer 1 Origin",
+        "pickup_pincode": "110088",
+        "drop_address": "Customer 1 Drop",
+        "drop_pincode": "110088",
+        "length_cm": 20,
+        "breadth_cm": 20,
+        "height_cm": 20,
+        "actual_weight_kg": 2,
+        "order_type": "B2C",
+        "payment_type": "PREPAID",
+        "idempotency_key": shared_key,
+    }
+    payload2 = {
+        "pickup_address": "Customer 2 Origin",
+        "pickup_pincode": "110088",
+        "drop_address": "Customer 2 Drop",
+        "drop_pincode": "110088",
+        "length_cm": 20,
+        "breadth_cm": 20,
+        "height_cm": 20,
+        "actual_weight_kg": 2,
+        "order_type": "B2C",
+        "payment_type": "PREPAID",
+        "idempotency_key": shared_key,
+    }
+
+    # User 1 submits
+    res1 = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=payload1)
+    assert res1.status_code == 200
+    order1_id = res1.json()["id"]
+
+    # User 2 submits with SAME idempotency key
+    res2 = client.post("/api/orders", headers={"Authorization": f"Bearer {customer2_token}"}, json=payload2)
+    assert res2.status_code == 200
+    order2_id = res2.json()["id"]
+
+    # Must create two distinct orders
+    assert order1_id != order2_id
+
+    # User 1 retries with same key -> gets their own cached order
+    res1_retry = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=payload1)
+    assert res1_retry.status_code == 200
+    assert res1_retry.json()["id"] == order1_id
+
+
 def test_rate_card_versioning_preserves_historical_order_price(client, db, admin_token, customer_token):
     """
     When a rate card is updated (versioned), past orders must retain their original total_charge.

@@ -272,7 +272,7 @@ def create_cod_surcharge(
 # Agent Management
 # ---------------------------------------------------------------------------
 @router.get("/agents", response_model=list[AgentResponse])
-def list_agents(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_agents(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     agents = (
         db.query(DeliveryAgent)
         .options(joinedload(DeliveryAgent.user), joinedload(DeliveryAgent.current_zone))

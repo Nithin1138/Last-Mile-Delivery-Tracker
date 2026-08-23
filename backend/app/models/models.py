@@ -307,7 +307,7 @@ class Order(Base):
         default=OrderStatusEnum.CREATED,
     )
     scheduled_date = Column(DateTime(timezone=True), nullable=True)
-    idempotency_key = Column(String(255), unique=True, nullable=True)
+    idempotency_key = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
@@ -318,6 +318,7 @@ class Order(Base):
         CheckConstraint("height_cm > 0", name="ck_order_height_positive"),
         CheckConstraint("actual_weight_kg > 0", name="ck_order_weight_positive"),
         CheckConstraint("total_charge >= 0", name="ck_order_charge_non_negative"),
+        UniqueConstraint("customer_id", "idempotency_key", name="uq_orders_customer_idempotency_key"),
         Index("ix_orders_status", "status"),
         Index("ix_orders_customer", "customer_id"),
         Index("ix_orders_agent", "agent_id"),
@@ -478,11 +479,12 @@ class Notification(Base):
 
 
 # ---------------------------------------------------------------------------
-# Idempotency Keys
+# Idempotency Keys (Scoped to Actor / User ID)
 # ---------------------------------------------------------------------------
 class IdempotencyKey(Base):
     __tablename__ = "idempotency_keys"
 
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     key = Column(String(255), primary_key=True)
     response_status = Column(Integer, nullable=False)
     response_body = Column(Text, nullable=False)
