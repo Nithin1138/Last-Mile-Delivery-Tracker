@@ -40,13 +40,18 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
   };
 
   useEffect(() => {
-    fetchOrders();
+    const handler = setTimeout(() => {
+      fetchOrders();
+    }, 200);
 
     const interval = setInterval(() => {
       fetchOrders(true);
-    }, 8000);
+    }, 12000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(handler);
+      clearInterval(interval);
+    };
   }, [statusFilter, search]);
 
   return (

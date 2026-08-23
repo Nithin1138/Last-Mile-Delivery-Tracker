@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { Login } from './pages/Login';
-import { Navbar } from './components/Navbar';
-import { CustomerDashboard } from './pages/CustomerDashboard';
-import { AgentDashboard } from './pages/AgentDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { AdminOrdersPage } from './pages/AdminOrdersPage';
-import { AdminAgentsPage } from './pages/AdminAgentsPage';
-import { AdminZonesPage } from './pages/AdminZonesPage';
-import { AdminRateCardsPage } from './pages/AdminRateCardsPage';
-import { OrderCreatePage } from './pages/OrderCreatePage';
-import { OrderDetailModal } from './pages/OrderDetailModal';
+
+// Lazy-load all pages — each becomes a separate JS chunk, loaded on demand
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Navbar = lazy(() => import('./components/Navbar').then(m => ({ default: m.Navbar })));
+const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
+const AgentDashboard = lazy(() => import('./pages/AgentDashboard').then(m => ({ default: m.AgentDashboard })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminOrdersPage = lazy(() => import('./pages/AdminOrdersPage').then(m => ({ default: m.AdminOrdersPage })));
+const AdminAgentsPage = lazy(() => import('./pages/AdminAgentsPage').then(m => ({ default: m.AdminAgentsPage })));
+const AdminZonesPage = lazy(() => import('./pages/AdminZonesPage').then(m => ({ default: m.AdminZonesPage })));
+const AdminRateCardsPage = lazy(() => import('./pages/AdminRateCardsPage').then(m => ({ default: m.AdminRateCardsPage })));
+const OrderCreatePage = lazy(() => import('./pages/OrderCreatePage').then(m => ({ default: m.OrderCreatePage })));
+const OrderDetailModal = lazy(() => import('./pages/OrderDetailModal').then(m => ({ default: m.OrderDetailModal })));
+
+/** Full-screen shimmer shown while a lazy chunk is loading */
+const PageShimmer: React.FC = () => (
+  <div className="flex-1 p-8 space-y-4 max-w-7xl mx-auto w-full">
+    <div className="skeleton h-8 w-48 mb-6" />
+    <div className="skeleton h-32 w-full rounded-xl" />
+    <div className="skeleton h-32 w-full rounded-xl" />
+    <div className="skeleton h-32 w-full rounded-xl" />
+  </div>
+);
 
 const MainApp: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -25,13 +37,20 @@ const MainApp: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm">
-        Initializing Last-Mile Delivery Tracker...
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p>Last-Mile Delivery Tracker</p>
+        </div>
       </div>
     );
   }
 
   if (!isAuthenticated || !user) {
-    return <Login />;
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <Login />
+      </Suspense>
+    );
   }
 
   const handleOrderCreated = (orderId: string) => {
@@ -41,48 +60,80 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <Suspense fallback={null}>
+        <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      </Suspense>
 
       <main className="flex-1 pb-16">
-        {/* CUSTOMER PORTAL */}
-        {user.role === 'CUSTOMER' && (
-          <>
-            {currentTab === 'create-order' ? (
-              <OrderCreatePage onOrderCreated={handleOrderCreated} />
-            ) : (
-              <CustomerDashboard onCreateOrderClick={() => setCurrentTab('create-order')} />
-            )}
-          </>
-        )}
+        <Suspense fallback={<PageShimmer />}>
+          {/* CUSTOMER PORTAL */}
+          {user.role === 'CUSTOMER' && (
+            <>
+              {currentTab === 'create-order' ? (
+                <div className="page-enter">
+                  <OrderCreatePage onOrderCreated={handleOrderCreated} />
+                </div>
+              ) : (
+                <div className="page-enter">
+                  <CustomerDashboard onCreateOrderClick={() => setCurrentTab('create-order')} />
+                </div>
+              )}
+            </>
+          )}
 
-        {/* AGENT PORTAL */}
-        {user.role === 'AGENT' && (
-          <AgentDashboard />
-        )}
+          {/* AGENT PORTAL */}
+          {user.role === 'AGENT' && (
+            <div className="page-enter">
+              <AgentDashboard />
+            </div>
+          )}
 
-        {/* ADMIN PORTAL */}
-        {user.role === 'ADMIN' && (
-          <>
-            {currentTab === 'dashboard' && (
-              <AdminDashboard onNavigateToOrders={() => setCurrentTab('orders')} />
-            )}
-            {currentTab === 'orders' && <AdminOrdersPage />}
-            {currentTab === 'create-order' && (
-              <OrderCreatePage onOrderCreated={handleOrderCreated} />
-            )}
-            {currentTab === 'agents' && <AdminAgentsPage />}
-            {currentTab === 'zones' && <AdminZonesPage />}
-            {currentTab === 'rate-cards' && <AdminRateCardsPage />}
-          </>
-        )}
+          {/* ADMIN PORTAL */}
+          {user.role === 'ADMIN' && (
+            <>
+              {currentTab === 'dashboard' && (
+                <div className="page-enter">
+                  <AdminDashboard onNavigateToOrders={() => setCurrentTab('orders')} />
+                </div>
+              )}
+              {currentTab === 'orders' && (
+                <div className="page-enter">
+                  <AdminOrdersPage />
+                </div>
+              )}
+              {currentTab === 'create-order' && (
+                <div className="page-enter">
+                  <OrderCreatePage onOrderCreated={handleOrderCreated} />
+                </div>
+              )}
+              {currentTab === 'agents' && (
+                <div className="page-enter">
+                  <AdminAgentsPage />
+                </div>
+              )}
+              {currentTab === 'zones' && (
+                <div className="page-enter">
+                  <AdminZonesPage />
+                </div>
+              )}
+              {currentTab === 'rate-cards' && (
+                <div className="page-enter">
+                  <AdminRateCardsPage />
+                </div>
+              )}
+            </>
+          )}
+        </Suspense>
       </main>
 
       {/* Global Order Detail Modal when triggered */}
       {selectedOrderId && (
-        <OrderDetailModal
-          orderId={selectedOrderId}
-          onClose={() => setSelectedOrderId(null)}
-        />
+        <Suspense fallback={null}>
+          <OrderDetailModal
+            orderId={selectedOrderId}
+            onClose={() => setSelectedOrderId(null)}
+          />
+        </Suspense>
       )}
 
       {/* Footer */}
@@ -100,3 +151,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

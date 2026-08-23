@@ -41,32 +41,57 @@ export const AdminOrdersPage: React.FC = () => {
   const [overrideReason, setOverrideReason] = useState('');
   const [overriding, setOverriding] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
+  // Static Metadata (fetched once on mount)
+  const fetchMetadata = async () => {
     try {
-      const [ordersRes, agentsRes, zonesRes] = await Promise.all([
-        ordersApi.listOrders({
-          status: statusFilter || undefined,
-          zone_id: zoneFilter || undefined,
-          search: search || undefined,
-        }),
+      const [agentsRes, zonesRes] = await Promise.all([
         adminApi.listAgents(),
         adminApi.listZones(),
       ]);
-      setOrders(ordersRes.orders);
       setAgents(agentsRes);
       setZones(zonesRes);
-    } catch (err: any) {
-      setError(extractErrorMessage(err));
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('Failed to load agents/zones metadata', err);
     }
   };
 
+  const fetchOrders = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+      setError(null);
+    }
+    try {
+      const ordersRes = await ordersApi.listOrders({
+        status: statusFilter || undefined,
+        zone_id: zoneFilter || undefined,
+        search: search.trim() || undefined,
+      });
+      setOrders(ordersRes.orders);
+    } catch (err: any) {
+      if (!isBackground) setError(extractErrorMessage(err));
+    } finally {
+      if (!isBackground) setLoading(false);
+    }
+  };
+
+  // Fetch agents & zones once on mount
   useEffect(() => {
-    fetchData();
+    fetchMetadata();
+  }, []);
+
+  // Debounced order fetch on search or filter change
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchOrders();
+    }, 200);
+
+    return () => clearTimeout(handler);
   }, [statusFilter, zoneFilter, search]);
+
+  const fetchData = async () => {
+    fetchMetadata();
+    fetchOrders();
+  };
 
   const handleAutoAssign = async (orderId: string) => {
     setAssigning(true);

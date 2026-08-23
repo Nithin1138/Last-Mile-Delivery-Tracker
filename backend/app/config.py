@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: Optional[str] = None
     TWILIO_AUTH_TOKEN: Optional[str] = None
     TWILIO_FROM_NUMBER: Optional[str] = None
+    # Set TWILIO_TEST_PHONE to your verified phone number to receive all SMS
+    # during testing/evaluations even if customer profile has no phone
+    TWILIO_TEST_PHONE: Optional[str] = None
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"
