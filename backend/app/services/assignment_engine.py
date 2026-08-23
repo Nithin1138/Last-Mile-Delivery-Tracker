@@ -177,12 +177,12 @@ def auto_assign_order(
             break
 
     if selected_agent is None:
-        db.rollback()
         raise AppError(
             code=ErrorCodes.NO_AVAILABLE_AGENT,
             message="All candidate agents were claimed by other orders.",
             status_code=400,
         )
+
 
     # Determine reason
     if selected_distance is not None and selected_zone_match:

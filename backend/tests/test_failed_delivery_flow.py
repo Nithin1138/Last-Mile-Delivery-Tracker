@@ -335,3 +335,106 @@ def test_reschedule_unexpected_assignment_app_error_propagates(client, db, monke
     assert res.json()["error"]["code"] == "INTERNAL_ERROR"
     assert "Unexpected dispatch fault" in res.json()["error"]["message"]
 
+
+def test_reschedule_all_candidate_claims_fail_preserves_rescheduled_state(client, db, monkeypatch):
+    """
+    CRITICAL CONCURRENCY TEST (Audit 4):
+    Verifies that when eligible candidates exist in the zone but every atomic claim fails
+    due to a concurrent race condition, auto_assign_order does NOT rollback the outer transaction.
+    The order must:
+    1. Successfully commit the RESCHEDULED status
+    2. Retain the new scheduled_date
+    3. Retain the release of the previous agent (current_load decremented)
+    4. NOT create a second delivery attempt
+    5. Return a clean 200 response indicating no agent is currently available.
+    """
+    zone = _setup_zone_and_rate(db)
+
+    customer = User(email="cust_race@failtest.com", password_hash=hash_password("pass"), name="Cust Race", role=RoleEnum.CUSTOMER)
+    db.add(customer)
+    db.flush()
+    customer_token = create_access_token({"sub": str(customer.id), "role": "CUSTOMER"})
+
+    admin = User(email="admin_race@failtest.com", password_hash=hash_password("pass"), name="Admin Race", role=RoleEnum.ADMIN)
+    db.add(admin)
+    db.flush()
+    admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
+
+    # Setup Agent 1 (assigned initially) and Agent 2, 3 (available candidates)
+    agent1_user, agent1 = _make_agent(db, zone, "Agent Initial", lat=28.6139, lon=77.2090)
+    agent2_user, agent2 = _make_agent(db, zone, "Candidate Agent A", lat=28.6200, lon=77.2100)
+    agent3_user, agent3 = _make_agent(db, zone, "Candidate Agent B", lat=28.6300, lon=77.2200)
+    db.commit()
+
+    agent1_token = create_access_token({"sub": str(agent1_user.id), "role": "AGENT"})
+
+    # Step 1: Create and assign order to Agent 1
+    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
+    order_id = res.json()["id"]
+
+    res = client.post(
+        f"/api/orders/{order_id}/assign",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"mode": "manual", "agent_id": str(agent1.id)},
+    )
+    assert res.status_code == 200
+    db.refresh(agent1)
+    assert agent1.current_load == 1
+
+    # Step 2: Drive order to FAILED
+    for status in ["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY"]:
+        client.post(f"/api/orders/{order_id}/status", headers={"Authorization": f"Bearer {agent1_token}"}, json={"status": status})
+
+    client.post(
+        f"/api/orders/{order_id}/status",
+        headers={"Authorization": f"Bearer {agent1_token}"},
+        json={"status": "FAILED", "failure_reason": "Customer unreachable on 3 calls"},
+    )
+
+    # Step 3: Monkeypatch atomic_claim_agent to simulate concurrent claim collision for all candidates
+    # (i.e. candidates were eligible during query, but atomic claim returned False)
+    def mock_atomic_claim(db_sess, target_agent_id, target_order_id):
+        return False
+
+    monkeypatch.setattr("app.services.assignment_engine.atomic_claim_agent", mock_atomic_claim)
+
+    # Step 4: Reschedule order
+    new_date_str = "2025-12-28T14:30:00"
+    res = client.post(
+        f"/api/orders/{order_id}/reschedule",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={"new_scheduled_date": new_date_str, "reason": "Customer requested weekend delivery"},
+    )
+    assert res.status_code == 200, f"Reschedule endpoint failed: {res.text}"
+    data = res.json()
+    assert data["assignment"] is None
+    assert "No available agent" in data["message"]
+
+    # Step 5: Verify Database Persistence (Transaction integrity)
+    # A) Order status must be RESCHEDULED in DB
+    order_db = db.query(Order).filter(Order.id == order_id).first()
+    assert order_db.status == OrderStatusEnum.RESCHEDULED
+    assert order_db.agent_id is None
+    assert order_db.scheduled_date is not None
+    assert "2025-12-28" in order_db.scheduled_date.isoformat()
+
+    # B) Agent 1 capacity must remain released
+    db.refresh(agent1)
+    assert agent1.current_load == 0, "Previous agent load must be decremented on reschedule"
+
+    # C) Delivery attempts must ONLY contain Attempt #1 (FAILED), no Attempt #2
+    attempts = db.query(DeliveryAttempt).filter(
+        DeliveryAttempt.order_id == order_id
+    ).order_by(DeliveryAttempt.attempt_number).all()
+    assert len(attempts) == 1, f"Expected exactly 1 attempt, found {len(attempts)}"
+    assert attempts[0].attempt_number == 1
+    assert attempts[0].status == DeliveryAttemptStatusEnum.FAILED
+
+    # D) Timeline must contain both FAILED and RESCHEDULED entries
+    res_timeline = client.get(f"/api/orders/{order_id}/timeline", headers={"Authorization": f"Bearer {customer_token}"})
+    assert res_timeline.status_code == 200
+    timeline_statuses = [e["new_status"] for e in res_timeline.json()]
+    assert "FAILED" in timeline_statuses
+    assert "RESCHEDULED" in timeline_statuses
+
+

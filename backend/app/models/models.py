@@ -394,9 +394,10 @@ class DeliveryAttempt(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     order_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("orders.id", ondelete="CASCADE"),
+        ForeignKey("orders.id", ondelete="RESTRICT"),
         nullable=False,
     )
+
     attempt_number = Column(Integer, nullable=False)
     agent_id = Column(
         UUID(as_uuid=True),
