@@ -230,6 +230,23 @@ export const Login: React.FC = () => {
             </div>
 
             <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Phone Number <span className="text-slate-500 font-normal">(for SMS delivery updates)</span>
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <input
+                  type="tel"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  placeholder="+91 98765 43210 (Optional)"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 transition-colors"
+                />
+              </div>
+            </div>
+
+
+            <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Account Role</label>
               <div className="grid grid-cols-2 gap-2">
                 <button

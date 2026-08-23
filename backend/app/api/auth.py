@@ -8,9 +8,10 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.core.errors import AppError, ErrorCodes
 from app.core.deps import get_current_user
 from app.models.models import User, RoleEnum
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserResponse
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserResponse, UpdateProfileRequest
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
 
 
 @router.post("/register", response_model=TokenResponse)
@@ -84,3 +85,21 @@ def get_me(
 ):
     """Get the current authenticated user's profile."""
     return UserResponse.from_user(current_user)
+
+
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    req: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update current user's profile (name or phone number)."""
+    if req.name is not None:
+        current_user.name = req.name.strip()
+    if req.phone is not None:
+        current_user.phone = req.phone.strip() if req.phone.strip() else None
+
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse.from_user(current_user)
+

@@ -28,7 +28,9 @@ interface AuthContextType {
   logout: () => void;
   quickLogin: (email: string, pass: string) => Promise<void>;
   restoreCustomAccount: () => void;
+  updateProfile: (payload: { name?: string; phone?: string }) => Promise<void>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -118,6 +120,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (payload: { name?: string; phone?: string }) => {
+    const updatedUser = await authApi.updateMe(payload);
+    setUser(updatedUser);
+    if (savedCustomAccount) {
+      const custom = { ...savedCustomAccount, user: updatedUser };
+      setSavedCustomAccount(custom);
+      localStorage.setItem('saved_custom_account', JSON.stringify(custom));
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -131,8 +143,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         quickLogin,
         restoreCustomAccount,
+        updateProfile,
       }}
     >
+
       {children}
     </AuthContext.Provider>
   );

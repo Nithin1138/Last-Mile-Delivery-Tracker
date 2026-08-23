@@ -16,7 +16,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+
+
 class TokenResponse(BaseModel):
+
     access_token: str
     token_type: str = "bearer"
     user: "UserResponse"

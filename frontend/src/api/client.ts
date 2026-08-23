@@ -72,7 +72,12 @@ export const authApi = {
     const res = await apiClient.get('/auth/me');
     return res.data;
   },
+  updateMe: async (payload: { name?: string; phone?: string }) => {
+    const res = await apiClient.put('/auth/me', payload);
+    return res.data;
+  },
 };
+
 
 // --------------------------------------------------------------------------
 // Pricing & Orders API
