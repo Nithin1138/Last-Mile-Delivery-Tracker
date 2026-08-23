@@ -427,7 +427,9 @@ def get_order(
 # Update Status (Protected RBAC)
 # ---------------------------------------------------------------------------
 @router.post("/{order_id}/status")
+@router.patch("/{order_id}/status")
 def update_order_status(
+
     order_id: str,
     req: StatusUpdateRequest,
     db: Session = Depends(get_db),
@@ -772,7 +774,9 @@ def get_delivery_attempts(
 # Assignment Decisions
 # ---------------------------------------------------------------------------
 @router.get("/{order_id}/assignments", response_model=list[AssignmentDecisionResponse])
+@router.get("/{order_id}/assignment-decision", response_model=list[AssignmentDecisionResponse])
 def get_assignment_decisions(
+
     order_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

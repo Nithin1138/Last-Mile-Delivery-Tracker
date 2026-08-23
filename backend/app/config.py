@@ -6,13 +6,14 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str
-    TEST_DATABASE_URL: Optional[str] = None
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/delivery_tracker"
+    TEST_DATABASE_URL: Optional[str] = "postgresql://postgres:postgres@localhost:5432/delivery_tracker_test"
 
     # JWT
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = "development-evaluation-jwt-secret-key-at-least-32-chars-length"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+
 
     # Notifications (Email & SMS)
     RESEND_API_KEY: Optional[str] = None

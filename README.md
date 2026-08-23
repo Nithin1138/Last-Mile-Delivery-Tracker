@@ -139,28 +139,31 @@ WHERE id = :agent_id
 | `POST` | `/api/auth/register` | Public | Register customer account (strictly forces CUSTOMER role) |
 | `POST` | `/api/auth/login` | Public | Authenticate user & return JWT token |
 | `GET` | `/api/auth/me` | Authenticated | Fetch current user profile |
-| `PUT` | `/api/auth/me` | Authenticated | Update user profile / mobile number for SMS |
-| `POST` | `/api/orders/quote` | Public / Auth | Live rate preview calculation (L×B×H, weight, route) |
+| `PUT` | `/api/auth/me` | Authenticated | Update user profile / mobile phone for SMS alerts |
+| `POST` | `/api/orders/quote` | Public | Instant rate calculation preview (L×B×H, weight, pincodes) |
 | `POST` | `/api/orders` | Customer / Admin | Idempotent order creation with server-side price freeze |
 | `GET` | `/api/orders` | Customer / Admin | List orders (Admin views all; Customer views own) |
-| `GET` | `/api/orders/{id}` | Owner / Agent / Admin | Get order details and pricing breakdown |
-| `PATCH`| `/api/orders/{id}/status` | Agent / Admin | Transition order status (state-machine validated) |
-| `POST` | `/api/orders/{id}/assign` | Admin | Assign agent (Auto-dispatch nearest or Manual) |
+| `GET` | `/api/orders/{id}` | Owner / Agent / Admin | Get order details and itemized pricing breakdown |
+| `POST` / `PATCH` | `/api/orders/{id}/status` | Agent / Admin | Transition order status (state-machine validated) |
+| `POST` | `/api/orders/{id}/assign` | Admin | Assign agent (Auto-dispatch nearest or Manual override) |
 | `POST` | `/api/orders/{id}/reschedule` | Owner / Admin | Reschedule failed order & atomically reassign agent #2 |
 | `GET` | `/api/orders/{id}/timeline` | Owner / Agent / Admin | Immutable audit log of all status transitions |
-| `GET` | `/api/orders/{id}/attempts` | Owner / Agent / Admin | List all delivery attempts (#1 Failed, #2 Delivered) |
-| `GET` | `/api/orders/{id}/assignment-decision` | Owner / Agent / Admin | Explainable candidate ranking & distance decision |
-| `GET` | `/api/agents/me` | Delivery Agent | Fetch agent status, assigned zone, and current load |
-| `PUT` | `/api/agents/me` | Delivery Agent | Toggle availability status (`AVAILABLE` / `OFF_DUTY`) |
+| `GET` | `/api/orders/{id}/attempts` | Owner / Agent / Admin | List all delivery attempts (#1 Failed, #2 In Progress/Delivered) |
+| `GET` | `/api/orders/{id}/assignments` | Owner / Agent / Admin | Explainable candidate ranking, distances & dispatch audit log |
 | `GET` | `/api/admin/dashboard` | Admin Only | Real-time fleet metrics, active orders, COD stats |
 | `GET` | `/api/admin/agents` | Admin Only | List all fleet delivery agents with status & load |
 | `POST` | `/api/admin/agents` | Admin Only | Register new delivery agent with capacity & zone |
+| `PATCH`| `/api/admin/agents/{agent_id}` | Admin Only | Update delivery agent capacity or active status |
 | `GET` | `/api/admin/zones` | Admin Only | List logistics zones |
 | `POST` | `/api/admin/zones` | Admin Only | Create new logistics zone |
+| `GET` | `/api/admin/areas` | Admin Only | List postal pincode areas |
+| `POST` | `/api/admin/areas` | Admin Only | Add pincode area mapping to logistics zone |
 | `GET` | `/api/admin/rate-cards` | Admin Only | List active and historical rate cards |
 | `POST` | `/api/admin/rate-cards` | Admin Only | Version and activate new rate card |
+| `PUT`  | `/api/admin/rate-cards/{card_id}` | Admin Only | Update rate card parameters with version preservation |
 | `GET` | `/api/admin/cod-surcharges` | Admin Only | List COD surcharge configurations |
 | `POST` | `/api/admin/cod-surcharges` | Admin Only | Update COD surcharge parameters |
+
 
 ---
 
