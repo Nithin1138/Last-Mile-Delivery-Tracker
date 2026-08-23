@@ -101,7 +101,7 @@ Pricing is 100% database-driven and adheres to courier industry standards:
    $$\text{Total} = \text{Base Charge} + \text{COD Charge}$$
 
 ### Immutable Historical Pricing Snapshots:
-When an order is created, all computed charge components are frozen on the `orders` record. Editing a rate card in the Admin portal deactivates the current version and inserts version $N+1$, ensuring historical orders never change price. A database-level partial unique index `uq_active_rate_card` strictly guarantees only one active card exists per `(order_type, zone_type)`.
+When an order is created, all computed charge components are frozen on the `orders` record. Editing a rate card in the Admin portal deactivates the current version and inserts version $N+1$, ensuring historical orders never change price. A database-level partial unique index `uq_rate_cards_one_active_per_type` strictly guarantees only one active card exists per `(order_type, zone_type)`.
 
 ---
 
@@ -140,7 +140,7 @@ WHERE id = :agent_id
 | `POST` | `/api/auth/login` | Public | Authenticate user & return JWT token |
 | `GET` | `/api/auth/me` | Authenticated | Fetch current user profile |
 | `PUT` | `/api/auth/me` | Authenticated | Update user profile / mobile phone for SMS alerts |
-| `POST` | `/api/orders/quote` | Public | Instant rate calculation preview (L×B×H, weight, pincodes) |
+| `POST` | `/api/orders/quote` | Authenticated (Customer / Admin) | Live rate preview calculation (L×B×H, weight, pincodes) |
 | `POST` | `/api/orders` | Customer / Admin | Idempotent order creation with server-side price freeze |
 | `GET` | `/api/orders` | Customer / Admin | List orders (Admin views all; Customer views own) |
 | `GET` | `/api/orders/{id}` | Owner / Agent / Admin | Get order details and itemized pricing breakdown |
@@ -187,15 +187,16 @@ WHERE id = :agent_id
          │       └───────────┘         │
          ├─────────────────────────────┤
          │                             │
-         ▼ (1:N) RESTRICT              ▼ (1:N)
+         ▼ (1:N) RESTRICT              ▼ (1:N) RESTRICT
    ┌───────────────────┐        ┌───────────────────┐
    │ OrderStatusHistory│        │ DeliveryAttempts  │
    └───────────────────┘        └───────────────────┘
 ```
 
-- **Partial Unique Index**: `uq_active_rate_card` enforces at database level that only 1 active rate card exists per `(order_type, zone_type)`.
+- **Partial Unique Index**: `uq_rate_cards_one_active_per_type` enforces at database level that only 1 active rate card exists per `(order_type, zone_type)`.
 - **Append-Only History Protection**: `OrderStatusHistory` and `DeliveryAttempts` enforce `ondelete="RESTRICT"` to prevent cascade deletion.
 - **Actor-Scoped Idempotency**: `IdempotencyKey` stores `(user_id, key)` with a composite uniqueness constraint.
+
 
 ---
 
