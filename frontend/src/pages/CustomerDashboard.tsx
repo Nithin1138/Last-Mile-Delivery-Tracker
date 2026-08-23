@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ordersApi, extractErrorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Order } from '../types';
@@ -14,8 +15,6 @@ import {
   Check, 
   X, 
   Bell, 
-  Sparkles, 
-  ShieldCheck,
   CheckCircle2,
   Smartphone
 } from 'lucide-react';
@@ -53,7 +52,7 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
     try {
       await updateProfile({ phone: phoneNumber.trim() });
       setIsPhoneModalOpen(false);
-      setPhoneSuccess('SMS alert phone number updated successfully!');
+      setPhoneSuccess('SMS alert mobile number updated successfully!');
       setTimeout(() => setPhoneSuccess(null), 4000);
     } catch (err: any) {
       setPhoneError(extractErrorMessage(err));
@@ -101,12 +100,25 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-      {/* Toast notification for phone updates */}
-      {phoneSuccess && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-950/90 border border-emerald-700/80 text-emerald-200 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2.5 text-xs animate-in fade-in slide-in-from-bottom-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium">{phoneSuccess}</span>
-        </div>
+      {/* Toast notification rendered via Portal to always anchor to top-right viewport */}
+      {phoneSuccess && typeof document !== 'undefined' && createPortal(
+        <div className="fixed top-20 right-6 z-50 bg-slate-900/95 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-950/60 backdrop-blur-xl flex items-center gap-3 text-xs animate-in fade-in slide-in-from-top-3">
+          <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="font-semibold text-white">Alert Settings Updated</div>
+            <div className="text-[11px] text-emerald-300/90">{phoneSuccess}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPhoneSuccess(null)}
+            className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors ml-2 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>,
+        document.body
       )}
 
       {/* Header */}
@@ -268,8 +280,8 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
         </div>
       )}
 
-      {/* SMS Alert Settings Modal */}
-      {isPhoneModalOpen && (
+      {/* SMS Alert Settings Modal rendered via Portal */}
+      {isPhoneModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 relative">
             <div className="flex items-start justify-between">
@@ -365,7 +377,8 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Order Detail Modal */}
