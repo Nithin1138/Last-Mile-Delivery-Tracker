@@ -4,6 +4,15 @@ A production-minded logistics and dispatch management platform featuring a **dat
 
 ---
 
+## 🌐 Live Hosted Application (REQ-22)
+
+- **Frontend Application**: [https://lastmileflow.vercel.app/](https://lastmileflow.vercel.app/)
+- **Backend API**: [https://lastmile-backend-f1ma.onrender.com/](https://lastmile-backend-f1ma.onrender.com/)
+- **Interactive Swagger Docs**: [https://lastmile-backend-f1ma.onrender.com/docs](https://lastmile-backend-f1ma.onrender.com/docs)
+- **GitHub Repository**: [https://github.com/Nithin1138/Last-Mile-Delivery-Tracker](https://github.com/Nithin1138/Last-Mile-Delivery-Tracker)
+
+---
+
 ## ⚡ 5-Minute Evaluation Flow
 
 The application comes pre-seeded with realistic operational data (demo accounts, rate cards, pincodes, and active delivery agents).
