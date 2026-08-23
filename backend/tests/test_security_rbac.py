@@ -568,6 +568,20 @@ def test_database_triggers_prevent_raw_sql_audit_log_mutations(db):
         db.commit()
     db.rollback()
 
+    # 4. Raw SQL insert into delivery_attempts with terminal FAILED status
+    terminal_attempt_id = uuid4()
+    db.execute(text(f"""
+        INSERT INTO delivery_attempts (id, order_id, attempt_number, status, failure_reason, created_at)
+        VALUES ('{terminal_attempt_id}', '{order.id}', 2, 'FAILED', 'Customer unavailable', NOW())
+    """))
+    db.commit()
+
+    # Raw SQL UPDATE on terminal delivery_attempt -> Must fail via trigger
+    with pytest.raises((InternalError, DBAPIError), match="is in terminal status"):
+        db.execute(text(f"UPDATE delivery_attempts SET failure_reason = 'HACKED' WHERE id = '{terminal_attempt_id}'"))
+        db.commit()
+    db.rollback()
+
 
 def test_delivery_attempt_orm_immutability_prevents_deletion(db):
     """DeliveryAttempt objects cannot be deleted via ORM sessions."""
@@ -604,6 +618,43 @@ def test_delivery_attempt_orm_immutability_prevents_deletion(db):
         db.delete(attempt)
         db.commit()
     db.rollback()
+
+
+def test_terminal_delivery_attempt_orm_immutability_prevents_update(db):
+    """DeliveryAttempt objects in terminal DELIVERED/FAILED status cannot be updated via ORM."""
+    import pytest
+    from app.models.models import DeliveryAttempt, Order, Zone, OrderTypeEnum, PaymentTypeEnum, DeliveryAttemptStatusEnum
+
+    zone = Zone(name="Terminal Attempt Zone")
+    user = User(email=f"term_attempt_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Term Attempt User", role=RoleEnum.CUSTOMER)
+    db.add_all([zone, user])
+    db.flush()
+
+    order = Order(
+        customer_id=user.id,
+        pickup_address="A", pickup_pincode="110001", pickup_zone_id=zone.id,
+        drop_address="B", drop_pincode="110001", drop_zone_id=zone.id,
+        length_cm=10, breadth_cm=10, height_cm=10,
+        actual_weight_kg=1, volumetric_weight_kg=0.2, chargeable_weight_kg=1,
+        base_charge=50, cod_charge=0, total_charge=50,
+        order_type=OrderTypeEnum.B2C, payment_type=PaymentTypeEnum.PREPAID,
+    )
+    db.add(order)
+    db.flush()
+
+    attempt = DeliveryAttempt(
+        order_id=order.id,
+        attempt_number=1,
+        status=DeliveryAttemptStatusEnum.DELIVERED,
+    )
+    db.add(attempt)
+    db.commit()
+
+    with pytest.raises(ValueError, match="is in terminal status 'DELIVERED' and cannot be modified"):
+        attempt.failure_reason = "Should not be allowed to change after delivery"
+        db.commit()
+    db.rollback()
+
 
 
 

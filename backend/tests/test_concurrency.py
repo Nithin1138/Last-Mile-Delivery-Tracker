@@ -364,8 +364,20 @@ def test_real_multithreaded_initial_rate_card_creation_race():
 
     token = create_access_token({"sub": str(admin_id), "role": "ADMIN"})
 
+    sync_barrier = threading.Barrier(2)
+
     def thread_safe_get_db():
         s = TestingSessionLocal()
+        orig_commit = s.commit
+
+        def synced_commit():
+            try:
+                sync_barrier.wait(timeout=5.0)
+            except Exception:
+                pass
+            return orig_commit()
+
+        s.commit = synced_commit
         try:
             yield s
         finally:
@@ -398,9 +410,14 @@ def test_real_multithreaded_initial_rate_card_creation_race():
 
     app.dependency_overrides.clear()
 
-    status_codes = [r1["status_code"], r2["status_code"]]
-    assert 200 in status_codes
-    assert all(code in [200, 409] for code in status_codes)
+    status_codes = sorted([r1["status_code"], r2["status_code"]])
+    # Proves exact conflict behavior: exactly one 200 and exactly one 409 Conflict
+    assert status_codes == [200, 409], f"Expected exactly [200, 409], got {status_codes}"
+
+    # Verify structured 409 error payload
+    conflict_res = r1 if r1["status_code"] == 409 else r2
+    assert conflict_res["data"]["error"]["code"] == "VALIDATION_ERROR"
+    assert "already exists" in conflict_res["data"]["error"]["message"]
 
     # Verify that in the database, exactly ONE active card exists for B2C INTER
     with TestingSessionLocal() as verify_db:
@@ -410,6 +427,7 @@ def test_real_multithreaded_initial_rate_card_creation_race():
             RateCard.is_active == True,
         ).all()
         assert len(active_cards) == 1
+
 
 
 

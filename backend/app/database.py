@@ -61,7 +61,23 @@ DROP TRIGGER IF EXISTS trg_immutable_delivery_attempts_delete ON delivery_attemp
 CREATE TRIGGER trg_immutable_delivery_attempts_delete
 BEFORE DELETE ON delivery_attempts
 FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+
+CREATE OR REPLACE FUNCTION prevent_terminal_attempt_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status IN ('DELIVERED', 'FAILED') THEN
+        RAISE EXCEPTION 'DeliveryAttempt record #% is in terminal status % and cannot be modified.', OLD.attempt_number, OLD.status;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_immutable_delivery_attempts_update ON delivery_attempts;
+CREATE TRIGGER trg_immutable_delivery_attempts_update
+BEFORE UPDATE ON delivery_attempts
+FOR EACH ROW EXECUTE FUNCTION prevent_terminal_attempt_mutation();
 """
+
 
 
 

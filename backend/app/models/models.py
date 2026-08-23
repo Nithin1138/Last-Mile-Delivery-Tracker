@@ -445,6 +445,23 @@ def _prevent_delivery_attempt_delete(mapper, connection, target):
     raise ValueError("DeliveryAttempt records are immutable audit artifacts and cannot be deleted.")
 
 
+@event.listens_for(DeliveryAttempt, "before_update")
+def _prevent_terminal_delivery_attempt_update(mapper, connection, target):
+    import sqlalchemy as sa
+    state = sa.inspect(target)
+    history = state.attrs.status.history
+    if history.deleted:
+        orig_status = history.deleted[0]
+    else:
+        orig_status = target.status
+
+    if orig_status in (DeliveryAttemptStatusEnum.DELIVERED, DeliveryAttemptStatusEnum.FAILED):
+        raise ValueError(
+            f"DeliveryAttempt #{target.attempt_number} is in terminal status '{orig_status.value}' and cannot be modified."
+        )
+
+
+
 
 # ---------------------------------------------------------------------------
 # Assignment Decisions (audit trail)
