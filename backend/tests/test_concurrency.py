@@ -19,7 +19,9 @@ from app.services.assignment_engine import auto_assign_order
 from app.models.models import (
     User, RoleEnum, DeliveryAgent, AgentStatusEnum, Zone, Order,
     OrderStatusEnum, OrderTypeEnum, PaymentTypeEnum, AssignmentDecision, DeliveryAttempt,
+    RateCard, ZoneRelationEnum,
 )
+
 from app.core.errors import AppError, ErrorCodes
 from tests.conftest import TestingSessionLocal
 
@@ -331,3 +333,72 @@ def test_concurrent_assignment_same_order(db):
         a2 = verify_db.query(DeliveryAgent).filter(DeliveryAgent.id == agent2_id).first()
         loads = {a1.current_load, a2.current_load}
         assert loads == {0, 1}
+
+
+def test_real_multithreaded_initial_rate_card_creation_race():
+    """
+    True PostgreSQL Concurrency Integration Test:
+    Spawns 2 concurrent worker threads with separate DB connections attempting to create
+    the initial active rate card for B2C INTER simultaneously.
+
+    PostgreSQL partial unique constraint uq_rate_cards_one_active_per_type guarantees
+    that exactly 1 active card is preserved in the database.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    barrier = threading.Barrier(2)
+
+    def worker_create_card() -> dict:
+        barrier.wait()
+        with TestingSessionLocal() as session:
+            try:
+                existing = (
+                    session.query(RateCard)
+                    .filter(RateCard.order_type == OrderTypeEnum.B2C, RateCard.zone_type == ZoneRelationEnum.INTER, RateCard.is_active == True)
+                    .with_for_update()
+                    .first()
+                )
+                version = 1
+                if existing:
+                    existing.is_active = False
+                    version = existing.version + 1
+
+                card = RateCard(
+                    order_type=OrderTypeEnum.B2C,
+                    zone_type=ZoneRelationEnum.INTER,
+                    base_fee=120.0,
+                    rate_per_kg=40.0,
+                    version=version,
+                )
+                session.add(card)
+                session.commit()
+                return {"success": True, "version": card.version}
+            except IntegrityError:
+                session.rollback()
+                return {"success": False, "error": "INTEGRITY_CONFLICT"}
+            except Exception as e:
+                session.rollback()
+                return {"success": False, "error": str(e)}
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        f1 = executor.submit(worker_create_card)
+        f2 = executor.submit(worker_create_card)
+        r1 = f1.result()
+        r2 = f2.result()
+
+    results = [r1, r2]
+    successes = [r for r in results if r["success"]]
+    assert len(successes) >= 1
+
+
+
+    # Verify that in the database, exactly ONE active card exists for B2C INTER
+    with TestingSessionLocal() as verify_db:
+        active_cards = verify_db.query(RateCard).filter(
+            RateCard.order_type == OrderTypeEnum.B2C,
+            RateCard.zone_type == ZoneRelationEnum.INTER,
+            RateCard.is_active == True,
+        ).all()
+        assert len(active_cards) == 1
+
+

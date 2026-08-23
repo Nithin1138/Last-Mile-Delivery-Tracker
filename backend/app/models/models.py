@@ -503,6 +503,27 @@ class Notification(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+@event.listens_for(AssignmentDecision, "before_update")
+def _prevent_assignment_decision_update(mapper, connection, target):
+    raise ValueError("AssignmentDecision records are strictly append-only. Updates are forbidden.")
+
+
+@event.listens_for(AssignmentDecision, "before_delete")
+def _prevent_assignment_decision_delete(mapper, connection, target):
+    raise ValueError("AssignmentDecision records are strictly append-only. Deletions are forbidden.")
+
+
+@event.listens_for(Notification, "before_update")
+def _prevent_notification_update(mapper, connection, target):
+    raise ValueError("Notification records are strictly append-only. Updates are forbidden.")
+
+
+@event.listens_for(Notification, "before_delete")
+def _prevent_notification_delete(mapper, connection, target):
+    raise ValueError("Notification records are strictly append-only. Deletions are forbidden.")
+
+
+
 # ---------------------------------------------------------------------------
 # Idempotency Keys (Scoped to Actor / User ID)
 # ---------------------------------------------------------------------------

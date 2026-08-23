@@ -34,7 +34,45 @@ def check_db_connection() -> bool:
         return False
 
 
+IMMUTABILITY_TRIGGERS_SQL = """
+CREATE OR REPLACE FUNCTION prevent_audit_log_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Table % is strictly append-only. UPDATE and DELETE operations are forbidden.', TG_TABLE_NAME;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_immutable_order_status_history ON order_status_history;
+CREATE TRIGGER trg_immutable_order_status_history
+BEFORE UPDATE OR DELETE ON order_status_history
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+
+DROP TRIGGER IF EXISTS trg_immutable_assignment_decisions ON assignment_decisions;
+CREATE TRIGGER trg_immutable_assignment_decisions
+BEFORE UPDATE OR DELETE ON assignment_decisions
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+
+DROP TRIGGER IF EXISTS trg_immutable_notifications ON notifications;
+CREATE TRIGGER trg_immutable_notifications
+BEFORE UPDATE OR DELETE ON notifications
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+"""
+
+
+def install_immutability_triggers(bind=None):
+    """Installs PostgreSQL database triggers to block direct SQL UPDATE and DELETE on audit log tables."""
+    target = bind or engine
+    try:
+        with target.begin() as conn:
+            conn.execute(text(IMMUTABILITY_TRIGGERS_SQL))
+    except Exception:
+        # Graceful fallback if non-PostgreSQL backend or dialect lacks plpgsql
+        pass
+
+
 def create_tables():
-    """Create all tables from model metadata."""
+    """Create all tables from model metadata and install immutability triggers."""
     from app.models import models  # noqa: F401 — import to register models
     Base.metadata.create_all(bind=engine)
+    install_immutability_triggers(engine)
+

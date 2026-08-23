@@ -493,4 +493,73 @@ def test_status_history_immutability_prevents_update_and_delete(db):
     db.rollback()
 
 
+def test_database_triggers_prevent_raw_sql_audit_log_mutations(db):
+    """
+    Direct raw SQL UPDATE and DELETE on audit log tables (order_status_history, assignment_decisions, notifications)
+    must be strictly blocked by PostgreSQL database-level triggers.
+    """
+    import pytest
+    from sqlalchemy import text
+    from sqlalchemy.exc import InternalError, DBAPIError
+    from app.models.models import Order, Zone, OrderTypeEnum, PaymentTypeEnum
+
+    zone = Zone(name="Trigger Immutability Zone")
+    user = User(email=f"trig_immut_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Trigger Immut User", role=RoleEnum.CUSTOMER)
+    db.add_all([zone, user])
+    db.flush()
+
+    order = Order(
+        customer_id=user.id,
+        pickup_address="A", pickup_pincode="110001", pickup_zone_id=zone.id,
+        drop_address="B", drop_pincode="110001", drop_zone_id=zone.id,
+        length_cm=10, breadth_cm=10, height_cm=10,
+        actual_weight_kg=1, volumetric_weight_kg=0.2, chargeable_weight_kg=1,
+        base_charge=50, cod_charge=0, total_charge=50,
+        order_type=OrderTypeEnum.B2C, payment_type=PaymentTypeEnum.PREPAID,
+    )
+    db.add(order)
+    db.flush()
+
+    # 1. Raw SQL insert into order_status_history
+    history_id = uuid4()
+    db.execute(text(f"""
+        INSERT INTO order_status_history (id, order_id, new_status, reason, created_at)
+        VALUES ('{history_id}', '{order.id}', 'CREATED', 'Initial order placement', NOW())
+    """))
+    db.commit()
+
+    # Raw SQL UPDATE on order_status_history -> Must fail via trigger
+    with pytest.raises((InternalError, DBAPIError), match="strictly append-only"):
+        db.execute(text(f"UPDATE order_status_history SET new_status = 'HACKED' WHERE id = '{history_id}'"))
+        db.commit()
+    db.rollback()
+
+    # Raw SQL DELETE on order_status_history -> Must fail via trigger
+    with pytest.raises((InternalError, DBAPIError), match="strictly append-only"):
+        db.execute(text(f"DELETE FROM order_status_history WHERE id = '{history_id}'"))
+        db.commit()
+    db.rollback()
+
+    # 2. Raw SQL insert into notifications
+    notif_id = uuid4()
+    db.execute(text(f"""
+        INSERT INTO notifications (id, order_id, notification_type, channel, status, created_at)
+        VALUES ('{notif_id}', '{order.id}', 'ORDER_CREATED', 'EMAIL', 'SENT', NOW())
+    """))
+    db.commit()
+
+    # Raw SQL UPDATE on notifications -> Must fail via trigger
+    with pytest.raises((InternalError, DBAPIError), match="strictly append-only"):
+        db.execute(text(f"UPDATE notifications SET status = 'FAILED' WHERE id = '{notif_id}'"))
+        db.commit()
+    db.rollback()
+
+    # Raw SQL DELETE on notifications -> Must fail via trigger
+    with pytest.raises((InternalError, DBAPIError), match="strictly append-only"):
+        db.execute(text(f"DELETE FROM notifications WHERE id = '{notif_id}'"))
+        db.commit()
+    db.rollback()
+
+
+
 

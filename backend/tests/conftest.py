@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
-from app.database import Base, get_db
+from app.database import Base, get_db, install_immutability_triggers
 from app.main import app
 from app.config import settings
 from app.models.models import (
@@ -45,12 +45,15 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(autouse=True)
 def clean_tables_per_test():
-    """Ensures each test starts and ends with clean isolated tables."""
+    """Ensures each test starts and ends with clean isolated tables and triggers."""
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    install_immutability_triggers(engine)
     yield
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    install_immutability_triggers(engine)
+
 
 
 @pytest.fixture
