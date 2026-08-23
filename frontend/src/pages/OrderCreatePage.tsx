@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ordersApi, extractErrorMessage } from '../api/client';
 import { PriceQuote } from '../types';
 import { PricingBreakdownCard } from '../components/PricingBreakdownCard';
-import { Package, MapPin, Calculator, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Package, MapPin, Calculator, AlertCircle, CheckCircle2, ArrowRight, Sparkles, CreditCard } from 'lucide-react';
 
 interface Props {
   onOrderCreated: (orderId: string) => void;
@@ -22,7 +22,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
   const [actualWeightKg, setActualWeightKg] = useState<number>(8);
 
   // Business Parameters
-  const [orderType, setOrderType] = useState<'B2B' | 'B2C'>('B2C');
+  const [orderType, setOrderType] = useState<'B2C' | 'B2B'>('B2C');
   const [paymentType, setPaymentType] = useState<'PREPAID' | 'COD'>('COD');
 
   // Pricing State
@@ -60,7 +60,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
       }
     };
 
-    const timer = setTimeout(fetchQuote, 250);
+    const timer = setTimeout(fetchQuote, 200);
     return () => clearTimeout(timer);
   }, [pickupPincode, dropPincode, lengthCm, breadthCm, heightCm, actualWeightKg, orderType, paymentType]);
 
@@ -91,24 +91,29 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-          <Package className="w-6 h-6 text-indigo-400" />
+        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <Package className="w-5 h-5" />
+          </div>
           Create Order & Live Price Preview
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           Zone detection, volumetric weight (<code className="font-mono text-slate-300">L×B×H÷5000</code>), rate card resolution, and COD charges computed server-side before confirmation.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Input Form (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-6">
+        <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-6 backdrop-blur-xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Quick Demo Pre-fill */}
-            <div className="flex items-center justify-between bg-indigo-950/40 border border-indigo-800/40 p-3 rounded-xl text-xs">
-              <span className="text-indigo-300 font-medium">Quick Preset (Worked Example from Brief):</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-indigo-950/40 border border-indigo-800/40 p-3 rounded-xl text-xs">
+              <span className="text-indigo-300 font-medium flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                Canonical Benchmark Preset:
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -121,15 +126,15 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                   setOrderType('B2C');
                   setPaymentType('COD');
                 }}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1 rounded-lg transition-colors"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg transition-all text-xs cursor-pointer shadow-sm hover:shadow-indigo-600/25"
               >
-                Load Canonical 50×40×30 cm (8 kg)
+                Load Worked Example (₹322.25)
               </button>
             </div>
 
             {/* Addresses & Pincodes */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5 border-b border-slate-700 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2 border-b border-slate-800 pb-2.5">
                 <MapPin className="w-4 h-4 text-cyan-400" />
                 Origin & Destination
               </h3>
@@ -137,46 +142,46 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Pickup */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-slate-300">Pickup Address</label>
+                  <label className="block text-xs font-semibold text-slate-300">Pickup Address</label>
                   <input
                     type="text"
                     required
                     value={pickupAddress}
                     onChange={(e) => setPickupAddress(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
                   />
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400 font-medium">Pincode:</label>
+                    <label className="text-xs text-slate-400 font-medium">Pickup Pincode:</label>
                     <input
                       type="text"
                       required
                       value={pickupPincode}
                       onChange={(e) => setPickupPincode(e.target.value)}
                       placeholder="e.g. 110001"
-                      className="w-28 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100"
+                      className="w-28 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none transition-all"
                     />
                   </div>
                 </div>
 
                 {/* Drop */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-slate-300">Drop Address</label>
+                  <label className="block text-xs font-semibold text-slate-300">Drop Address</label>
                   <input
                     type="text"
                     required
                     value={dropAddress}
                     onChange={(e) => setDropAddress(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
                   />
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400 font-medium">Pincode:</label>
+                    <label className="text-xs text-slate-400 font-medium">Drop Pincode:</label>
                     <input
                       type="text"
                       required
                       value={dropPincode}
                       onChange={(e) => setDropPincode(e.target.value)}
                       placeholder="e.g. 400076"
-                      className="w-28 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100"
+                      className="w-28 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -185,14 +190,14 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
 
             {/* Package Dimensions & Weight */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5 border-b border-slate-700 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2 border-b border-slate-800 pb-2.5">
                 <Calculator className="w-4 h-4 text-amber-400" />
                 Package Dimensions & Weight
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Length (cm)</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Length (cm)</label>
                   <input
                     type="number"
                     min="1"
@@ -200,11 +205,11 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     required
                     value={lengthCm}
                     onChange={(e) => setLengthCm(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Breadth (cm)</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Breadth (cm)</label>
                   <input
                     type="number"
                     min="1"
@@ -212,11 +217,11 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     required
                     value={breadthCm}
                     onChange={(e) => setBreadthCm(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Height (cm)</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Height (cm)</label>
                   <input
                     type="number"
                     min="1"
@@ -224,7 +229,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     required
                     value={heightCm}
                     onChange={(e) => setHeightCm(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none transition-all"
                   />
                 </div>
                 <div>
@@ -236,7 +241,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     required
                     value={actualWeightKg}
                     onChange={(e) => setActualWeightKg(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-amber-500/50 rounded-lg px-3 py-2 text-sm font-mono text-amber-200 font-bold"
+                    className="w-full bg-slate-950 border border-amber-500/40 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 rounded-xl px-3 py-2 text-xs font-mono text-amber-200 font-bold focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -244,7 +249,8 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
 
             {/* Order & Payment Types */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-slate-200 border-b border-slate-700 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2.5 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-emerald-400" />
                 Order & Payment Mode
               </h3>
 
@@ -255,10 +261,10 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     <button
                       type="button"
                       onClick={() => setOrderType('B2C')}
-                      className={`p-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                      className={`p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         orderType === 'B2C'
-                          ? 'bg-indigo-600 border-indigo-400 text-white'
-                          : 'bg-slate-900 border-slate-700 text-slate-400'
+                          ? 'bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-600/25'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                       }`}
                     >
                       B2C Retail
@@ -266,10 +272,10 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     <button
                       type="button"
                       onClick={() => setOrderType('B2B')}
-                      className={`p-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                      className={`p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         orderType === 'B2B'
-                          ? 'bg-indigo-600 border-indigo-400 text-white'
-                          : 'bg-slate-900 border-slate-700 text-slate-400'
+                          ? 'bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-600/25'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                       }`}
                     >
                       B2B Commercial
@@ -283,10 +289,10 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     <button
                       type="button"
                       onClick={() => setPaymentType('PREPAID')}
-                      className={`p-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                      className={`p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         paymentType === 'PREPAID'
-                          ? 'bg-indigo-600 border-indigo-400 text-white'
-                          : 'bg-slate-900 border-slate-700 text-slate-400'
+                          ? 'bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-600/25'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                       }`}
                     >
                       Prepaid
@@ -294,10 +300,10 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                     <button
                       type="button"
                       onClick={() => setPaymentType('COD')}
-                      className={`p-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                      className={`p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         paymentType === 'COD'
-                          ? 'bg-indigo-600 border-indigo-400 text-white'
-                          : 'bg-slate-900 border-slate-700 text-slate-400'
+                          ? 'bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-600/25'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                       }`}
                     >
                       Cash on Delivery
@@ -308,7 +314,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
             </div>
 
             {submitError && (
-              <div className="bg-rose-950/40 border border-rose-800 p-3 rounded-lg flex items-center gap-2 text-xs text-rose-300">
+              <div className="bg-rose-950/40 border border-rose-800 p-3 rounded-xl flex items-center gap-2 text-xs text-rose-300">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{submitError}</span>
               </div>
@@ -317,10 +323,10 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
             <button
               type="submit"
               disabled={submitLoading || !quote}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 text-base transition-colors shadow-lg disabled:opacity-50"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 text-sm transition-all shadow-lg shadow-emerald-950/40 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitLoading ? 'Creating Order...' : 'Confirm & Place Order'}
-              <ArrowRight className="w-5 h-5" />
+              {submitLoading ? 'Creating Order & Reserving Agent...' : 'Confirm & Place Order'}
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         </div>
@@ -328,13 +334,14 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
         {/* Live Pricing Breakdown Card (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           {quoteLoading && (
-            <div className="p-8 bg-slate-800/60 border border-slate-700 rounded-xl text-center text-slate-400 text-sm">
-              Calculating real-time rates from database...
+            <div className="p-8 bg-slate-900/60 border border-slate-800 rounded-2xl text-center text-slate-400 text-xs flex items-center justify-center gap-2.5 shadow-lg">
+              <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <span>Calculating live rates from database...</span>
             </div>
           )}
 
           {quoteError && !quoteLoading && (
-            <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-xl text-rose-300 text-xs flex items-start gap-2">
+            <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-2xl text-rose-300 text-xs flex items-start gap-2 shadow-lg">
               <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
               <div>
                 <strong className="block font-semibold">Pricing Calculation Error:</strong>
@@ -344,7 +351,9 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
           )}
 
           {quote && !quoteLoading && (
-            <PricingBreakdownCard quote={quote} title="Live Price Quote" />
+            <div className="card-enter">
+              <PricingBreakdownCard quote={quote} title="Live Dynamic Price Quote" />
+            </div>
           )}
         </div>
       </div>
