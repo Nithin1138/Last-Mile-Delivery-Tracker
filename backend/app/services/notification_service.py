@@ -247,266 +247,297 @@ def send_order_notification(
 
 
 # ---------------------------------------------------------------------------
-# HTML email builder helpers
+# Clean, Structured, Minimal HTML Email Builder
 # ---------------------------------------------------------------------------
-def _html_email(title: str, body_html: str) -> str:
-    """Generate a professional, beautifully styled HTML email — works in all mail clients."""
+def _build_minimal_email(
+    short_id: str,
+    title: str,
+    intro: str,
+    rows: list[tuple[str, str]],
+    highlight_html: Optional[str] = None,
+) -> str:
+    """Build a professional, clean, minimal, structured HTML email.
+
+    Design specs:
+    - 540px container max-width with zero overflow
+    - Clean neutral aesthetic (crisp white card on slate-50 canvas)
+    - Perfectly aligned 2-column key-value summary table
+    - Fully responsive table layout with word-wrap
+    - Compatible with all major email clients (Gmail, Apple Mail, Outlook)
+    """
+    rows_html = ""
+    for idx, (label, val) in enumerate(rows):
+        border_bottom = "border-bottom: 1px solid #f1f5f9;" if idx < len(rows) - 1 else ""
+        rows_html += f"""
+        <tr>
+          <td style="padding: 10px 14px; font-size: 13px; color: #64748b; font-weight: 500; {border_bottom} width: 42%;">{label}</td>
+          <td style="padding: 10px 14px; font-size: 13px; color: #0f172a; font-weight: 600; text-align: right; {border_bottom} width: 58%;">{val}</td>
+        </tr>"""
+
+    highlight_block = f'<div style="margin: 16px 0 20px;">{highlight_html}</div>' if highlight_html else ""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>{title}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
+<body style="margin: 0; padding: 24px 12px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 540px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; table-layout: fixed;">
+    <!-- Brand Header -->
+    <tr>
+      <td style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9; background-color: #ffffff;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="vertical-align: middle;">
+              <span style="font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #4f46e5;">Last-Mile Delivery</span>
+            </td>
+            <td align="right" style="vertical-align: middle;">
+              <span style="font-size: 12px; font-weight: 600; color: #64748b; background-color: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-family: monospace;">#{short_id}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
 
-        <!-- Brand Header -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%);padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 8px;display:inline-block;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:8px;padding:6px 16px;color:#a5b4fc;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">&#128666; Last-Mile Delivery</p>
-            <h1 style="margin:16px 0 0;color:#ffffff;font-size:24px;font-weight:700;line-height:1.3;">{title}</h1>
-          </td>
-        </tr>
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 24px;">
+        <h1 style="margin: 0 0 10px; font-size: 19px; font-weight: 700; color: #0f172a; line-height: 1.3;">{title}</h1>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #475569; line-height: 1.6;">{intro}</p>
 
-        <!-- Body Content -->
-        <tr><td style="background-color:#1e293b;padding:36px 40px;">{body_html}</td></tr>
+        {highlight_block}
 
-        <!-- Divider + Footer -->
-        <tr><td style="background-color:#1e293b;padding:0 40px 24px;">
-          <hr style="border:none;border-top:1px solid #334155;margin:0 0 20px;" />
-          <p style="margin:0;color:#475569;font-size:12px;line-height:1.8;text-align:center;">
-            Automated notification from the Last-Mile Delivery Management Platform.<br/>
-            Please do not reply to this email.<br/>
-            <span style="color:#334155;">&#169; 2025 Last-Mile Delivery Tracker. All rights reserved.</span>
-          </p>
-        </td></tr>
+        <!-- Key-Value Table -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border: 1px solid #f1f5f9; border-radius: 6px; overflow: hidden; background-color: #ffffff; table-layout: fixed; word-break: break-word;">
+          {rows_html}
+        </table>
+      </td>
+    </tr>
 
-      </table>
-    </td></tr>
+    <!-- Footer -->
+    <tr>
+      <td style="padding: 16px 24px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center;">
+        <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+          Automated notification from Last-Mile Delivery Tracker.<br>
+          © 2025 Last-Mile Delivery Tracker. All rights reserved.
+        </p>
+      </td>
+    </tr>
   </table>
 </body>
 </html>"""
 
 
-def _info_row(icon: str, label: str, value: str) -> str:
-    return f"""<tr>
-      <td style="padding:9px 0;border-bottom:1px solid #334155;">
-        <table width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td style="width:26px;color:#64748b;font-size:15px;">{icon}</td>
-          <td style="color:#94a3b8;font-size:13px;font-weight:500;width:130px;">{label}</td>
-          <td style="color:#e2e8f0;font-size:13px;font-weight:600;">{value}</td>
-        </tr></table>
-      </td>
-    </tr>"""
-
-
-def _card(header: str, rows_html: str, accent: str = "#6366f1") -> str:
-    return f"""
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:rgba(30,41,59,0.9);border:1px solid #334155;border-radius:12px;margin-bottom:20px;overflow:hidden;">
-      <tr><td style="background:rgba({accent.lstrip('#')},0.08);padding:10px 20px;border-bottom:1px solid #334155;">
-        <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">{header}</p>
-      </td></tr>
-      <tr><td style="padding:4px 20px 12px;">
-        <table width="100%" cellpadding="0" cellspacing="0">{rows_html}</table>
-      </td></tr>
-    </table>"""
-
-
 # ---------------------------------------------------------------------------
-# Pre-built notification templates — rich HTML emails
+# Pre-built notification templates
 # ---------------------------------------------------------------------------
 def notify_order_created(db: Session, order, customer):
     short_id = str(order.id)[:8].upper()
-    subject = f"✅ Order Confirmed — #{short_id}"
+    subject = f"Order Confirmed — #{short_id}"
 
     order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
     payment_type = order.payment_type.value if hasattr(order.payment_type, 'value') else str(order.payment_type)
 
-    rows = (
-        _info_row("🆔", "Order ID", f"#{short_id}") +
-        _info_row("📍", "Pickup", order.pickup_pincode) +
-        _info_row("🏁", "Drop-off", order.drop_pincode) +
-        _info_row("📦", "Order Type", order_type) +
-        _info_row("💳", "Payment", payment_type) +
-        _info_row("💰", "Total Charge", f"\u20b9{order.total_charge}")
-    )
+    rows = [
+        ("Order ID", f"#{short_id}"),
+        ("Pickup Pincode", str(order.pickup_pincode)),
+        ("Delivery Pincode", str(order.drop_pincode)),
+        ("Order Type", order_type),
+        ("Payment Mode", payment_type),
+        ("Total Amount", f"₹{order.total_charge}"),
+    ]
 
-    body_html = f"""
-    <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;line-height:1.7;">
-      Hi <strong style="color:#e2e8f0;">{customer.name}</strong>,<br/>
-      Your order has been placed successfully and is being processed. An agent will be assigned shortly.
-    </p>
-    {_card("📦 Order Details", rows)}
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:rgba(21,128,61,0.1);border:1px solid rgba(21,128,61,0.3);border-radius:10px;padding:14px 20px;margin-bottom:24px;">
-      <tr><td style="color:#4ade80;font-size:13px;font-weight:600;">
-        🎉 Your order is confirmed. We'll notify you as soon as a delivery agent is assigned.
-      </td></tr>
-    </table>"""
+    intro = f"Hello <strong>{customer.name}</strong>, your order has been received and confirmed. We are assigning the nearest delivery agent to pick up your package."
+
+    body = _build_minimal_email(
+        short_id=short_id,
+        title="Order Placed Successfully",
+        intro=intro,
+        rows=rows,
+    )
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
         user_phone=customer.phone, notification_type="ORDER_CREATED",
-        subject=subject, body=_html_email(f"Order Confirmed — #{short_id}", body_html),
+        subject=subject, body=body,
         sms_message=f"LastMile: Order #{short_id} confirmed. Total Rs {order.total_charge}. Track in dashboard.",
     )
 
 
 def notify_order_assigned(db: Session, order, customer, agent_name: str):
     short_id = str(order.id)[:8].upper()
-    subject = f"🚚 Agent Assigned — #{short_id}"
+    subject = f"Agent Assigned — #{short_id}"
 
-    rows = (
-        _info_row("🆔", "Order ID", f"#{short_id}") +
-        _info_row("📍", "Pickup", order.pickup_pincode) +
-        _info_row("🏁", "Drop-off", order.drop_pincode) +
-        _info_row("📊", "Status", "Agent Assigned")
+    rows = [
+        ("Order ID", f"#{short_id}"),
+        ("Delivery Agent", agent_name),
+        ("Pickup Pincode", str(order.pickup_pincode)),
+        ("Drop-off Pincode", str(order.drop_pincode)),
+        ("Status", "Assigned & Dispatched"),
+    ]
+
+    intro = f"Hello <strong>{customer.name}</strong>, a delivery agent has been assigned to your order and is preparing for pickup."
+
+    highlight = f"""
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-left: 4px solid #4f46e5; border-radius: 0 6px 6px 0; padding: 14px 16px;">
+      <tr>
+        <td>
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #4f46e5; margin-bottom: 3px;">Assigned Delivery Agent</div>
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a;">{agent_name}</div>
+          <div style="font-size: 12px; color: #16a34a; font-weight: 500; margin-top: 2px;">● On duty & dispatched</div>
+        </td>
+      </tr>
+    </table>"""
+
+    body = _build_minimal_email(
+        short_id=short_id,
+        title="Delivery Agent Assigned",
+        intro=intro,
+        rows=rows,
+        highlight_html=highlight,
     )
-
-    body_html = f"""
-    <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;line-height:1.7;">
-      Hi <strong style="color:#e2e8f0;">{customer.name}</strong>,<br/>
-      Great news! A delivery agent has been assigned and is heading your way.
-    </p>
-
-    <!-- Agent Spotlight Card -->
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.12));border:1px solid rgba(99,102,241,0.35);border-radius:12px;padding:28px;margin-bottom:20px;text-align:center;">
-      <tr><td>
-        <p style="margin:0 0 4px;font-size:48px;">🧑&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</p>
-        <p style="margin:0 0 6px;color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Your Delivery Agent</p>
-        <p style="margin:0 0 12px;color:#ffffff;font-size:26px;font-weight:800;">{agent_name}</p>
-        <span style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.5);border-radius:20px;padding:5px 18px;color:#a5b4fc;font-size:12px;font-weight:700;">&#128994; On the Way</span>
-      </td></tr>
-    </table>
-
-    {_card("📦 Order Info", rows)}
-    <p style="margin:0 0 8px;color:#64748b;font-size:13px;line-height:1.7;">
-      Your package will be picked up shortly. Expect real-time status updates as the delivery progresses.
-    </p>"""
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
         user_phone=customer.phone, notification_type="ORDER_ASSIGNED",
-        subject=subject, body=_html_email(f"Agent Assigned — #{short_id}", body_html),
-        sms_message=f"LastMile: {agent_name} assigned to Order #{short_id}. Pickup starting soon.",
+        subject=subject, body=body,
+        sms_message=f"LastMile: Agent {agent_name} assigned to Order #{short_id}. Pickup starting soon.",
     )
 
 
 def notify_status_change(db: Session, order, customer, new_status: str):
     short_id = str(order.id)[:8].upper()
 
-    _map = {
-        "PICKED_UP":        ("📦", "Package Picked Up",       "Package safely collected by agent and in transit."),
-        "IN_TRANSIT":       ("🚌", "In Transit",              "Your package is on the move through our network."),
-        "OUT_FOR_DELIVERY": ("🛵", "Out for Delivery",        "Your package is just around the corner! Stay available."),
-        "DELIVERED":        ("✅", "Successfully Delivered",   "Your package has been delivered. Thank you for choosing Last-Mile!"),
-        "CANCELLED":        ("❌", "Order Cancelled",         "Your order has been cancelled. Contact support if unexpected."),
+    status_labels = {
+        "PICKED_UP": ("Package Picked Up", "Your package has been picked up by the delivery agent and is on its way."),
+        "IN_TRANSIT": ("Package in Transit", "Your shipment is moving through the delivery route."),
+        "OUT_FOR_DELIVERY": ("Out for Delivery", "Your delivery is out for final delivery. Please ensure someone is available at the address."),
+        "DELIVERED": ("Delivered Successfully", "Your shipment has been delivered. Thank you for using Last-Mile Delivery!"),
+        "CANCELLED": ("Order Cancelled", "Your delivery order has been cancelled."),
     }
-    icon, headline, msg = _map.get(new_status, ("🔄", new_status.replace("_", " ").title(), "Your order status has been updated."))
-    subject = f"{icon} {headline} — #{short_id}"
 
-    rows = (
-        _info_row("🆔", "Order ID", f"#{short_id}") +
-        _info_row("📍", "Route", f"{order.pickup_pincode} \u2192 {order.drop_pincode}")
+    title, intro_msg = status_labels.get(
+        new_status,
+        (f"Status Update: {new_status.replace('_', ' ').title()}", "Your order status has been updated."),
     )
 
-    body_html = f"""
-    <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;line-height:1.7;">
-      Hi <strong style="color:#e2e8f0;">{customer.name}</strong>,<br/>
-      {msg}
-    </p>
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:rgba(30,41,59,0.9);border:1px solid #334155;border-radius:12px;padding:28px;margin-bottom:20px;text-align:center;">
-      <tr><td>
-        <p style="margin:0 0 8px;font-size:48px;">{icon}</p>
-        <p style="margin:0;color:#e2e8f0;font-size:22px;font-weight:700;">{headline}</p>
-      </td></tr>
-    </table>
-    {_card("📦 Order Details", rows)}"""
+    subject = f"{title} — #{short_id}"
+    intro = f"Hello <strong>{customer.name}</strong>, {intro_msg}"
+
+    rows = [
+        ("Order ID", f"#{short_id}"),
+        ("Route", f"{order.pickup_pincode} → {order.drop_pincode}"),
+        ("Current Status", new_status.replace("_", " ").title()),
+    ]
+
+    status_color = "#16a34a" if new_status == "DELIVERED" else "#4f46e5"
+    highlight = f"""
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-left: 4px solid {status_color}; border-radius: 0 6px 6px 0; padding: 12px 16px;">
+      <tr>
+        <td>
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; margin-bottom: 2px;">Shipment Status</div>
+          <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{new_status.replace('_', ' ').title()}</div>
+        </td>
+      </tr>
+    </table>"""
+
+    body = _build_minimal_email(
+        short_id=short_id,
+        title=title,
+        intro=intro,
+        rows=rows,
+        highlight_html=highlight,
+    )
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
         user_phone=customer.phone, notification_type=f"STATUS_{new_status}",
-        subject=subject, body=_html_email(headline, body_html),
+        subject=subject, body=body,
         sms_message=f"LastMile: Order #{short_id} is now {new_status.replace('_',' ').title()}.",
     )
 
 
 def notify_delivery_failed(db: Session, order, customer, reason: str):
     short_id = str(order.id)[:8].upper()
-    subject = f"⚠️ Delivery Failed — #{short_id}"
+    subject = f"Delivery Attempt Failed — #{short_id}"
 
-    rows = (
-        _info_row("🆔", "Order ID", f"#{short_id}") +
-        _info_row("📍", "Route", f"{order.pickup_pincode} \u2192 {order.drop_pincode}") +
-        _info_row("⚠️", "Failure Reason", reason) +
-        _info_row("📊", "Status", "Failed — Please Reschedule")
-    )
+    rows = [
+        ("Order ID", f"#{short_id}"),
+        ("Route", f"{order.pickup_pincode} → {order.drop_pincode}"),
+        ("Failure Reason", reason),
+        ("Next Step", "Reschedule in dashboard"),
+    ]
 
-    body_html = f"""
-    <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;line-height:1.7;">
-      Hi <strong style="color:#e2e8f0;">{customer.name}</strong>,<br/>
-      We're sorry — your delivery attempt was unsuccessful. You can reschedule at any time from your dashboard.
-    </p>
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:rgba(185,28,28,0.1);border:1px solid rgba(185,28,28,0.35);border-radius:12px;padding:20px;margin-bottom:20px;">
-      <tr><td>
-        <p style="margin:0 0 6px;color:#fca5a5;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">⚠️ Delivery Attempt Failed</p>
-        <p style="margin:0;color:#e2e8f0;font-size:14px;">Reason: <em style="color:#fca5a5;">{reason}</em></p>
-      </td></tr>
-    </table>
-    {_card("📦 Order Details", rows)}
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:14px 20px;">
-      <tr><td style="color:#fbbf24;font-size:13px;line-height:1.7;">
-        👉 <strong>Next:</strong> Log in to your dashboard and reschedule. A new agent will be automatically assigned.
-      </td></tr>
+    intro = f"Hello <strong>{customer.name}</strong>, our delivery attempt for order #{short_id} could not be completed."
+
+    highlight = f"""
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 0 6px 6px 0; padding: 14px 16px;">
+      <tr>
+        <td>
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #dc2626; margin-bottom: 3px;">Attempt Unsuccessful</div>
+          <div style="font-size: 14px; font-weight: 600; color: #991b1b;">Reason: {reason}</div>
+          <div style="font-size: 12px; color: #b91c1c; margin-top: 4px;">Please log in to your dashboard to choose a new delivery date.</div>
+        </td>
+      </tr>
     </table>"""
+
+    body = _build_minimal_email(
+        short_id=short_id,
+        title="Delivery Attempt Unsuccessful",
+        intro=intro,
+        rows=rows,
+        highlight_html=highlight,
+    )
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
         user_phone=customer.phone, notification_type="DELIVERY_FAILED",
-        subject=subject, body=_html_email("Delivery Attempt Failed", body_html),
+        subject=subject, body=body,
         sms_message=f"LastMile: Delivery failed for #{short_id}. Reason: {reason}. Reschedule in dashboard.",
     )
 
 
 def notify_order_rescheduled(db: Session, order, customer, new_date: str):
     short_id = str(order.id)[:8].upper()
-    subject = f"📅 Order Rescheduled — #{short_id}"
+    subject = f"Order Rescheduled — #{short_id}"
 
-    rows = (
-        _info_row("🆔", "Order ID", f"#{short_id}") +
-        _info_row("📍", "Route", f"{order.pickup_pincode} \u2192 {order.drop_pincode}") +
-        _info_row("📅", "New Date", new_date) +
-        _info_row("📊", "Status", "Rescheduled — Assigning Agent")
+    rows = [
+        ("Order ID", f"#{short_id}"),
+        ("New Delivery Date", new_date),
+        ("Route", f"{order.pickup_pincode} → {order.drop_pincode}"),
+        ("Status", "Rescheduled (Reassigning Agent)"),
+    ]
+
+    intro = f"Hello <strong>{customer.name}</strong>, your order has been rescheduled. A delivery agent is being assigned for your new delivery window."
+
+    highlight = f"""
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 0 6px 6px 0; padding: 14px 16px;">
+      <tr>
+        <td>
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #0284c7; margin-bottom: 3px;">New Scheduled Date</div>
+          <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{new_date}</div>
+          <div style="font-size: 12px; color: #0369a1; margin-top: 2px;">● An agent will be assigned for this slot</div>
+        </td>
+      </tr>
+    </table>"""
+
+    body = _build_minimal_email(
+        short_id=short_id,
+        title="Delivery Rescheduled",
+        intro=intro,
+        rows=rows,
+        highlight_html=highlight,
     )
-
-    body_html = f"""
-    <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;line-height:1.7;">
-      Hi <strong style="color:#e2e8f0;">{customer.name}</strong>,<br/>
-      Your delivery has been rescheduled successfully. A new agent is being assigned and you'll receive another confirmation shortly.
-    </p>
-    <table width="100%" cellpadding="0" cellspacing="0"
-      style="background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1));border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:28px;margin-bottom:20px;text-align:center;">
-      <tr><td>
-        <p style="margin:0 0 6px;font-size:48px;">📅</p>
-        <p style="margin:0 0 6px;color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">New Delivery Date</p>
-        <p style="margin:0;color:#ffffff;font-size:24px;font-weight:800;">{new_date}</p>
-      </td></tr>
-    </table>
-    {_card("📦 Order Details", rows)}"""
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
         user_phone=customer.phone, notification_type="ORDER_RESCHEDULED",
-        subject=subject, body=_html_email(f"Order Rescheduled — #{short_id}", body_html),
+        subject=subject, body=body,
         sms_message=f"LastMile: Order #{short_id} rescheduled to {new_date}. New agent being assigned.",
     )
+
 
 
