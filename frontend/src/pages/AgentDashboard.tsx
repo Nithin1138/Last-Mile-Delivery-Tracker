@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ordersApi, agentSelfApi, adminApi, extractErrorMessage } from '../api/client';
 import { Order, AgentAvailability, Zone } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
@@ -222,9 +223,9 @@ export const AgentDashboard: React.FC = () => {
       </div>
 
       {/* Zone Edit Modal */}
-      {isEditingZone && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <form onSubmit={handleSaveZone} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-sm w-full space-y-4 text-xs shadow-2xl">
+      {isEditingZone && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleSaveZone} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-sm w-full space-y-4 text-xs shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
               <MapPin className="w-5 h-5" />
               Set Your Operating Zone
@@ -238,7 +239,7 @@ export const AgentDashboard: React.FC = () => {
                 required
                 value={selectedNewZoneId}
                 onChange={(e) => setSelectedNewZoneId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">-- Select a Zone --</option>
                 {allZones.map((z) => (
@@ -252,21 +253,23 @@ export const AgentDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsEditingZone(false)}
-                className="px-3 py-2 bg-slate-800 text-slate-300 rounded-lg cursor-pointer"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={savingZone || !selectedNewZoneId}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg disabled:opacity-50 cursor-pointer transition-colors"
               >
                 {savingZone ? 'Saving...' : 'Save Zone'}
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
+
 
       {/* Assigned Orders */}
       <div className="space-y-4">
@@ -399,9 +402,9 @@ export const AgentDashboard: React.FC = () => {
       </div>
 
       {/* Failure Reason Input Modal */}
-      {failureOrderId && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <form onSubmit={handleMarkFailed} className="bg-slate-900 border border-rose-700/60 p-6 rounded-2xl max-w-md w-full space-y-4 text-xs">
+      {failureOrderId && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleMarkFailed} className="bg-slate-900 border border-rose-700/60 p-6 rounded-2xl max-w-md w-full space-y-4 text-xs shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
               <ShieldAlert className="w-5 h-5" />
               Record Delivery Attempt Failure
@@ -417,7 +420,7 @@ export const AgentDashboard: React.FC = () => {
                 value={failureReason}
                 onChange={(e) => setFailureReason(e.target.value)}
                 placeholder="e.g. Customer unavailable at address, phone unreachable after 3 attempts"
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100 placeholder-slate-500"
+                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-lg p-2.5 text-slate-100 placeholder-slate-500 focus:outline-none"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -427,21 +430,23 @@ export const AgentDashboard: React.FC = () => {
                   setFailureOrderId(null);
                   setFailureReason('');
                 }}
-                className="px-3 py-2 bg-slate-800 text-slate-300 rounded-lg cursor-pointer"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submittingFailure || !failureReason}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg disabled:opacity-50 cursor-pointer transition-colors"
               >
                 {submittingFailure ? 'Submitting...' : 'Record Failure'}
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
+
 
       {/* Order Detail Modal */}
       {selectedOrderId && (

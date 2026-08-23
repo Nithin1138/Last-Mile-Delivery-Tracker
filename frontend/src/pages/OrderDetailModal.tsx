@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Order, TimelineEntry, DeliveryAttempt, AssignmentDecision } from '../types';
 import { ordersApi, extractErrorMessage } from '../api/client';
 import { StatusBadge } from '../components/StatusBadge';
 import { OrderTimeline } from '../components/OrderTimeline';
 import { DeliveryAttemptsList } from '../components/DeliveryAttemptsList';
 import { AssignmentAuditCard } from '../components/AssignmentAuditCard';
-import { X, Package, MapPin, Calendar, Clock, RotateCcw, AlertCircle, Truck, Calculator } from 'lucide-react';
+import { X, Package, MapPin, Calendar, Clock, RotateCcw, Truck, Calculator } from 'lucide-react';
 
 interface Props {
   orderId: string;
@@ -57,17 +58,15 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
 
   useEffect(() => {
     fetchDetails();
-
-    // Auto-poll every 5 seconds for live status tracking
     const interval = setInterval(() => {
       fetchDetails(true);
-    }, 5000);
-
+    }, 10000);
     return () => clearInterval(interval);
   }, [orderId]);
 
   const handleReschedule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!rescheduleDate) return;
     setRescheduleLoading(true);
     setRescheduleError(null);
     try {
@@ -75,6 +74,7 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
         new_scheduled_date: new Date(rescheduleDate).toISOString(),
         reason: rescheduleReason || 'Customer requested reschedule',
       });
+
       setShowReschedule(false);
       await fetchDetails();
       if (onRefreshNeeded) onRefreshNeeded();
@@ -85,41 +85,46 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
     }
   };
 
+  if (typeof document === 'undefined') return null;
+
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-300 text-sm">
-          Loading order details...
+    return createPortal(
+      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-300 text-sm shadow-2xl flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <span>Loading order tracking & timeline...</span>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (error || !order) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4">
-          <div className="text-rose-400 font-bold">Error loading order</div>
+    return createPortal(
+      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="text-rose-400 font-bold text-sm">Error loading order</div>
           <div className="text-xs text-slate-400">{error || 'Order not found'}</div>
-          <button onClick={onClose} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs">
+          <button onClick={onClose} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold cursor-pointer">
             Close
           </button>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 max-w-4xl w-full rounded-2xl shadow-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-150">
+      <div className="bg-slate-900 border border-slate-800 max-w-4xl w-full rounded-2xl shadow-2xl overflow-hidden max-h-[88vh] flex flex-col my-auto animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-indigo-950 border border-indigo-700/60 rounded-xl text-indigo-400">
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-sm font-bold text-slate-100">#{order.id.slice(0, 8)}</span>
                 <StatusBadge status={order.status} size="sm" />
                 <span className="text-xs font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
@@ -134,14 +139,16 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            title="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+
           {/* Top Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Origin & Destination */}
@@ -298,6 +305,8 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
+
