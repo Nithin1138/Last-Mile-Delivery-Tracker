@@ -67,7 +67,7 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (57 unit, security, integration, notification and concurrency tests)
+- **Testing**: Pytest (60 unit, security, integration, notification and concurrency tests)
 
 ---
 
@@ -247,17 +247,18 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Complete Test Suite Coverage (57 Tests):
+### Complete Test Suite Coverage (60 Tests):
 - `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.
 - `test_security_rbac.py` (11 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, plus admin order creation validation for nonexistent customers, inactive accounts, and agent IDs.
 - `test_concurrency.py` (6 tests): True multithreaded PostgreSQL concurrent claim race conditions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via SELECT FOR UPDATE, capacity limits, release mechanics.
 - `test_pricing_engine.py` (8 tests): Volumetric weight, chargeable weight, B2B/B2C, INTRA/INTER rates, COD formulas, canonical worked example.
 - `test_order_lifecycle.py` (5 tests): State machine transitions, illegal transitions, cancellation rules, append-only history.
 - `test_assignment_engine.py` (5 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, fallback handling.
-- `test_notifications.py` (5 tests): Resend email provider, Twilio SMS provider, Console provider fallbacks, graceful error and network failure handling.
-- `test_api.py` (4 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze.
+- `test_notifications.py` (6 tests): Resend email provider, Twilio SMS provider, Console provider fallbacks, graceful error handling, and structured database notification audit row persistence across lifecycle events.
+- `test_api.py` (6 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze, structured 400 error responses on malformed UUID inputs, and concurrent rate card versioning safety.
 - `test_zone_service.py` (4 tests): Pincode resolution, unknown pincode rejection, inactive area rejection.
 - `test_distance.py` (4 tests): Haversine accuracy (Delhi–Mumbai sanity check).
+
 
 
 

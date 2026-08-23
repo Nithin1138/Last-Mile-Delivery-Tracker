@@ -40,7 +40,20 @@ from app.services.notification_service import (
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 
+def _parse_uuid(val: str, field_name: str = "ID") -> UUID:
+    """Safely parse a UUID string or raise a structured 400 domain error."""
+    try:
+        return UUID(str(val))
+    except (ValueError, AttributeError, TypeError):
+        raise AppError(
+            code=ErrorCodes.INVALID_ORDER_DATA,
+            message=f"Invalid {field_name} format.",
+            status_code=400,
+        )
+
+
 def _order_to_response(order: Order) -> OrderResponse:
+
     """Convert an Order model to an OrderResponse schema."""
     return OrderResponse(
         id=str(order.id),
@@ -361,13 +374,14 @@ def list_orders(
     if status:
         query = query.filter(Order.status == status)
     if zone_id:
+        parsed_zone = _parse_uuid(zone_id, "zone ID")
         query = query.filter(
-            (Order.pickup_zone_id == UUID(zone_id)) | (Order.drop_zone_id == UUID(zone_id))
+            (Order.pickup_zone_id == parsed_zone) | (Order.drop_zone_id == parsed_zone)
         )
     if agent_id:
-        query = query.filter(Order.agent_id == UUID(agent_id))
+        query = query.filter(Order.agent_id == _parse_uuid(agent_id, "agent ID"))
     if customer_id and current_user.role == RoleEnum.ADMIN:
-        query = query.filter(Order.customer_id == UUID(customer_id))
+        query = query.filter(Order.customer_id == _parse_uuid(customer_id, "customer ID"))
     if search:
         query = query.filter(
             Order.pickup_address.ilike(f"%{search}%")
@@ -410,7 +424,7 @@ def get_order(
             joinedload(Order.pickup_zone),
             joinedload(Order.drop_zone),
         )
-        .filter(Order.id == UUID(order_id))
+        .filter(Order.id == _parse_uuid(order_id, "order ID"))
         .first()
     )
 
@@ -441,7 +455,7 @@ def update_order_status(
     - AGENT: Only allowed for orders assigned to this agent.
     - ADMIN: Allowed for all orders (can supply admin_override).
     """
-    order = db.query(Order).filter(Order.id == UUID(order_id)).first()
+    order = db.query(Order).filter(Order.id == _parse_uuid(order_id, "order ID")).first()
     if not order:
         raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
 
@@ -535,7 +549,7 @@ def assign_order(
     # Acquire pessimistic row-level lock on the target order to prevent duplicate concurrent assignment
     order = (
         db.query(Order)
-        .filter(Order.id == UUID(order_id))
+        .filter(Order.id == _parse_uuid(order_id, "order ID"))
         .with_for_update()
         .first()
     )
@@ -551,7 +565,7 @@ def assign_order(
         )
 
     if req.mode == "manual" and req.agent_id:
-        decision = manual_assign_order(db, order, UUID(req.agent_id), current_user.id)
+        decision = manual_assign_order(db, order, _parse_uuid(req.agent_id, "agent ID"), current_user.id)
     else:
         decision = auto_assign_order(db, order, current_user.id)
 
@@ -598,7 +612,7 @@ def reschedule_order(
     If no agent is currently available, the order stays RESCHEDULED and can be
     manually assigned via POST /api/orders/{id}/assign.
     """
-    order = db.query(Order).filter(Order.id == UUID(order_id)).first()
+    order = db.query(Order).filter(Order.id == _parse_uuid(order_id, "order ID")).first()
     if not order:
         raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
 
@@ -698,7 +712,8 @@ def get_order_timeline(
     current_user: User = Depends(get_current_user),
 ):
     """Get the complete status timeline for an order with RBAC."""
-    order = db.query(Order).filter(Order.id == UUID(order_id)).first()
+    parsed_id = _parse_uuid(order_id, "order ID")
+    order = db.query(Order).filter(Order.id == parsed_id).first()
     if not order:
         raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
 
@@ -708,7 +723,7 @@ def get_order_timeline(
     history = (
         db.query(OrderStatusHistory)
         .options(joinedload(OrderStatusHistory.actor))
-        .filter(OrderStatusHistory.order_id == UUID(order_id))
+        .filter(OrderStatusHistory.order_id == parsed_id)
         .order_by(OrderStatusHistory.created_at)
         .all()
     )
@@ -737,7 +752,8 @@ def get_delivery_attempts(
     current_user: User = Depends(get_current_user),
 ):
     """Get all delivery attempts for an order with RBAC."""
-    order = db.query(Order).filter(Order.id == UUID(order_id)).first()
+    parsed_id = _parse_uuid(order_id, "order ID")
+    order = db.query(Order).filter(Order.id == parsed_id).first()
     if not order:
         raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
 
@@ -747,7 +763,7 @@ def get_delivery_attempts(
     attempts = (
         db.query(DeliveryAttempt)
         .options(joinedload(DeliveryAttempt.agent).joinedload(DeliveryAgent.user))
-        .filter(DeliveryAttempt.order_id == UUID(order_id))
+        .filter(DeliveryAttempt.order_id == parsed_id)
         .order_by(DeliveryAttempt.attempt_number)
         .all()
     )
@@ -782,7 +798,8 @@ def get_assignment_decisions(
     current_user: User = Depends(get_current_user),
 ):
     """Get assignment decisions for an order with RBAC."""
-    order = db.query(Order).filter(Order.id == UUID(order_id)).first()
+    parsed_id = _parse_uuid(order_id, "order ID")
+    order = db.query(Order).filter(Order.id == parsed_id).first()
     if not order:
         raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
 
@@ -791,7 +808,7 @@ def get_assignment_decisions(
 
     decisions = (
         db.query(AssignmentDecision)
-        .filter(AssignmentDecision.order_id == UUID(order_id))
+        .filter(AssignmentDecision.order_id == parsed_id)
         .order_by(AssignmentDecision.created_at)
         .all()
     )

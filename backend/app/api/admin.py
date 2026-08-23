@@ -28,6 +28,18 @@ from app.core.security import hash_password
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+def _parse_uuid(val: str, field_name: str = "ID") -> UUID:
+    """Safely parse a UUID string or raise a structured 400 domain error."""
+    try:
+        return UUID(str(val))
+    except (ValueError, AttributeError, TypeError):
+        raise AppError(
+            code=ErrorCodes.VALIDATION_ERROR,
+            message=f"Invalid {field_name} format.",
+            status_code=400,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Zones
 # ---------------------------------------------------------------------------
@@ -73,7 +85,7 @@ def list_areas(
 ):
     query = db.query(Area).options(joinedload(Area.zone))
     if zone_id:
-        query = query.filter(Area.zone_id == UUID(zone_id))
+        query = query.filter(Area.zone_id == _parse_uuid(zone_id, "zone ID"))
     areas = query.all()
     return [
         AreaResponse(
@@ -98,7 +110,7 @@ def create_area(
     if existing:
         raise AppError(code=ErrorCodes.VALIDATION_ERROR, message=f"Pincode {req.pincode} already mapped.", status_code=409)
 
-    zone = db.query(Zone).filter(Zone.id == UUID(req.zone_id)).first()
+    zone = db.query(Zone).filter(Zone.id == _parse_uuid(req.zone_id, "zone ID")).first()
     if not zone:
         raise AppError(code=ErrorCodes.ZONE_NOT_FOUND, message="Zone not found.", status_code=404)
 
@@ -143,10 +155,11 @@ def create_rate_card(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    # Deactivate existing active card for this combo
+    # Deactivate existing active card for this combo with row-level lock
     existing = (
         db.query(RateCard)
         .filter(RateCard.order_type == req.order_type, RateCard.zone_type == req.zone_type, RateCard.is_active == True)
+        .with_for_update()
         .first()
     )
     version = 1
@@ -189,7 +202,12 @@ def update_rate_card(
     current_user: User = Depends(require_admin),
 ):
     """Update a rate card by creating a new version (supersede, never mutate)."""
-    old_card = db.query(RateCard).filter(RateCard.id == UUID(card_id)).first()
+    old_card = (
+        db.query(RateCard)
+        .filter(RateCard.id == _parse_uuid(card_id, "rate card ID"))
+        .with_for_update()
+        .first()
+    )
     if not old_card:
         raise AppError(code=ErrorCodes.RATE_CARD_NOT_FOUND, message="Rate card not found.", status_code=404)
 
@@ -349,21 +367,23 @@ def update_agent(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    agent = db.query(DeliveryAgent).options(
-        joinedload(DeliveryAgent.user), joinedload(DeliveryAgent.current_zone)
-    ).filter(DeliveryAgent.id == UUID(agent_id)).first()
-
+    agent = (
+        db.query(DeliveryAgent)
+        .options(joinedload(DeliveryAgent.user), joinedload(DeliveryAgent.current_zone))
+        .filter(DeliveryAgent.id == _parse_uuid(agent_id, "agent ID"))
+        .first()
+    )
     if not agent:
-        raise AppError(code=ErrorCodes.AGENT_NOT_FOUND, message="Agent not found.", status_code=404)
+        raise AppError(code=ErrorCodes.AGENT_NOT_FOUND, message="Delivery agent not found.", status_code=404)
 
+    if req.current_load is not None:
+        agent.current_load = req.current_load
+    if req.max_capacity is not None:
+        agent.max_capacity = req.max_capacity
     if req.availability_status is not None:
         agent.availability_status = req.availability_status
-    if req.latitude is not None:
-        agent.latitude = req.latitude
-    if req.longitude is not None:
-        agent.longitude = req.longitude
     if req.zone_id is not None:
-        agent.current_zone_id = UUID(req.zone_id)
+        agent.current_zone_id = _parse_uuid(req.zone_id, "zone ID") if req.zone_id else None
     if req.max_capacity is not None:
         agent.max_capacity = req.max_capacity
     if req.is_active is not None:

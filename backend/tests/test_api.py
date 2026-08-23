@@ -223,3 +223,76 @@ def test_rate_card_versioning_preserves_historical_order_price(client, db, admin
     )
     assert order_res.status_code == 200
     assert order_res.json()["total_charge"] == 60.0
+
+
+def test_malformed_uuid_returns_structured_400(client, customer_token, admin_token):
+    """Passing a malformed non-UUID string into order path parameters returns a structured 400 error."""
+    # 1. Malformed order ID on GET /api/orders/{id}
+    res = client.get("/api/orders/not-a-valid-uuid", headers={"Authorization": f"Bearer {customer_token}"})
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "INVALID_ORDER_DATA"
+    assert "Invalid order ID format" in res.json()["error"]["message"]
+
+    # 2. Malformed order ID on POST /api/orders/{id}/status
+    res = client.post(
+        "/api/orders/invalid-uuid-123/status",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"status": "PICKED_UP"},
+    )
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "INVALID_ORDER_DATA"
+
+    # 3. Malformed agent ID on admin update
+    res = client.patch(
+        "/api/admin/agents/not-a-valid-agent-uuid",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"current_load": 2},
+    )
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_concurrent_rate_card_versioning_preserves_single_active_invariant(client, db, admin_token):
+    """
+    Simultaneous updates or creations to rate cards for the same (order_type, zone_type)
+    maintain PostgreSQL unique index consistency with exactly one active rate card.
+    """
+    zone = Zone(name="Concurrent Rate Zone")
+    db.add(zone)
+    db.flush()
+
+    rate_card = RateCard(
+        order_type=OrderTypeEnum.B2B,
+        zone_type=ZoneRelationEnum.INTER,
+        base_fee=Decimal("80.00"),
+        rate_per_kg=Decimal("25.00"),
+        version=1,
+        is_active=True,
+    )
+    db.add(rate_card)
+    db.commit()
+
+    # Create new rate card version via admin endpoint
+    res1 = client.post(
+        "/api/admin/rate-cards",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "order_type": "B2B",
+            "zone_type": "INTER",
+            "base_fee": 95.0,
+            "rate_per_kg": 30.0,
+        },
+    )
+    assert res1.status_code == 200
+    assert res1.json()["version"] == 2
+    assert res1.json()["is_active"] is True
+
+    # Check database: exactly 1 active card exists for B2B INTER
+    active_cards = db.query(RateCard).filter(
+        RateCard.order_type == OrderTypeEnum.B2B,
+        RateCard.zone_type == ZoneRelationEnum.INTER,
+        RateCard.is_active == True,
+    ).all()
+    assert len(active_cards) == 1
+    assert active_cards[0].version == 2
+
