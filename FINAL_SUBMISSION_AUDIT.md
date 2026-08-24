@@ -14,7 +14,7 @@
 
 | Requirement ID | Specification Summary | Implementation File | Verification & Test Evidence | Status |
 |---|---|---|---|:---:|
-| **REQ-01** | Full-featured last-mile delivery tracking platform | Full Stack | Live URLs active on Vercel & Render; 68/68 tests passing | **PASS** |
+| **REQ-01** | Full-featured last-mile delivery tracking platform | Full Stack | Live URLs active on Vercel & Render; 70/70 tests passing | **PASS** |
 | **REQ-02** | Order input schema: L×B×H, weight, B2B/B2C, Prepaid/COD | `backend/app/schemas/orders.py` | `test_pricing_engine.py`, `test_api.py` | **PASS** |
 | **REQ-03** | Order output: pricing snapshot, assignment, tracking | `backend/app/api/orders.py` | `test_order_lifecycle.py`, `test_failed_delivery_flow.py` | **PASS** |
 | **REQ-04** | Admin zone/area/rate/COD surcharge configuration | `backend/app/api/admin.py` | `test_security_rbac.py`, `test_api.py` | **PASS** |

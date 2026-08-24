@@ -86,77 +86,6 @@ class ResendNotificationProvider(NotificationProvider):
                 error=str(e),
             )
             return False
-
-
-# ---------------------------------------------------------------------------
-# SMS Provider Abstraction
-# ---------------------------------------------------------------------------
-class SmsProvider(ABC):
-    """Abstract SMS provider interface."""
-
-    @abstractmethod
-    def send_sms(self, to_phone: str, message: str) -> bool:
-        """Send an SMS notification. Returns True on success."""
-        ...
-
-
-class ConsoleSmsProvider(SmsProvider):
-    """Logs SMS notifications to console for zero-config local evaluation."""
-
-    def send_sms(self, to_phone: str, message: str) -> bool:
-        logger.info(f"[CONSOLE_SMS] to={to_phone} message=\"{message}\"")
-        log_event("SMS_NOTIFICATION_SENT", channel="console_sms", to=to_phone, message=message)
-        return True
-
-
-class TwilioSmsProvider(SmsProvider):
-    """Sends real SMS messages via Twilio REST API."""
-
-    def __init__(self, account_sid: str, auth_token: str, from_phone: str, test_phone: Optional[str] = None):
-        self.account_sid = account_sid
-        self.auth_token = auth_token
-        self.from_phone = from_phone
-        self.test_phone = test_phone  # Override recipient for trial accounts
-
-    def send_sms(self, to_phone: str, message: str) -> bool:
-        recipient = self.test_phone if self.test_phone else to_phone
-        try:
-            import httpx
-            url = f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
-            response = httpx.post(
-                url,
-                auth=(self.account_sid, self.auth_token),
-                data={
-                    "To": recipient,
-                    "From": self.from_phone,
-                    "Body": message,
-                },
-                timeout=5.0,
-            )
-            if response.status_code in [200, 201]:
-                log_event("SMS_NOTIFICATION_SENT", channel="twilio", to=recipient, message=message)
-                return True
-            else:
-                logger.error(f"Twilio SMS failed with status {response.status_code}: {response.text}")
-                log_event(
-                    "SMS_NOTIFICATION_FAILED",
-                    channel="twilio",
-                    to=recipient,
-                    status_code=response.status_code,
-                    error=response.text[:200],
-                )
-                return False
-        except Exception as e:
-            logger.error(f"Twilio SMS exception: {e}")
-            log_event(
-                "SMS_NOTIFICATION_FAILED",
-                channel="twilio",
-                to=recipient,
-                error=str(e),
-            )
-            return False
-
-
 def get_notification_provider() -> NotificationProvider:
     """Factory — returns configured email notification provider."""
     if settings.RESEND_API_KEY:
@@ -166,18 +95,6 @@ def get_notification_provider() -> NotificationProvider:
             test_email=settings.RESEND_TEST_EMAIL,
         )
     return ConsoleNotificationProvider()
-
-
-def get_sms_provider() -> SmsProvider:
-    """Factory — returns configured SMS notification provider."""
-    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER:
-        return TwilioSmsProvider(
-            account_sid=settings.TWILIO_ACCOUNT_SID,
-            auth_token=settings.TWILIO_AUTH_TOKEN,
-            from_phone=settings.TWILIO_FROM_NUMBER,
-            test_phone=settings.TWILIO_TEST_PHONE,
-        )
-    return ConsoleSmsProvider()
 
 
 def send_order_notification(
@@ -191,8 +108,7 @@ def send_order_notification(
     user_phone: Optional[str] = None,
     sms_message: Optional[str] = None,
 ):
-    """Send order email and SMS notifications and record them in the audit log."""
-    # 1. Email Notification
+    """Send transactional email notification and record structured audit row in PostgreSQL."""
     email_provider = get_notification_provider()
     try:
         email_success = email_provider.send_email(user_email, subject, body)
@@ -215,34 +131,6 @@ def send_order_notification(
     )
     db.add(email_record)
 
-    # 2. SMS Notification (use user_phone or TWILIO_TEST_PHONE if available)
-    target_phone = user_phone.strip() if (user_phone and user_phone.strip()) else settings.TWILIO_TEST_PHONE
-
-    if target_phone and sms_message:
-        sms_provider = get_sms_provider()
-        try:
-            sms_success = sms_provider.send_sms(target_phone, sms_message)
-            sms_status = NotificationStatusEnum.SENT if sms_success else NotificationStatusEnum.FAILED
-            sms_err = None if sms_success else "SMS provider returned failure"
-        except Exception as e:
-            sms_status = NotificationStatusEnum.FAILED
-            sms_err = str(e)
-            logger.error(f"SMS send error: {e}")
-
-        sms_record = Notification(
-            order_id=order_id,
-            user_id=user_id,
-            notification_type=f"{notification_type}_SMS",
-            channel="SMS",
-            subject=None,
-            body=sms_message,
-            status=sms_status,
-            error_message=sms_err,
-        )
-        db.add(sms_record)
-    elif sms_message:
-        # Gracefully log that SMS was skipped because no phone was on file
-        log_event("SMS_NOTIFICATION_SKIPPED", reason="No customer phone or test phone configured", order_id=str(order_id))
 
 
 
@@ -568,5 +456,9 @@ def build_password_reset_email(user_name: str, otp_code: str) -> str:
     )
 
 
-
-
+def send_password_reset_email(to_email: str, user_name: str, otp_code: str) -> bool:
+    """Send 6-digit password reset verification email using configured provider."""
+    provider = get_notification_provider()
+    subject = "LastMile Flow — 6-Digit Password Reset Passcode"
+    body = build_password_reset_email(user_name=user_name, otp_code=otp_code)
+    return provider.send_email(to_email=to_email, subject=subject, body=body)

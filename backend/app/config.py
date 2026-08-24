@@ -15,18 +15,12 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
 
-    # Notifications (Email & SMS)
+    # Transactional Email Notifications
     RESEND_API_KEY: Optional[str] = None
     NOTIFICATION_FROM_EMAIL: str = "noreply@lastmile.dev"
     # Set RESEND_TEST_EMAIL to your Resend account email to receive all notifications
     # during testing (Resend free tier only sends to the account owner's email)
     RESEND_TEST_EMAIL: Optional[str] = None
-    TWILIO_ACCOUNT_SID: Optional[str] = None
-    TWILIO_AUTH_TOKEN: Optional[str] = None
-    TWILIO_FROM_NUMBER: Optional[str] = None
-    # Set TWILIO_TEST_PHONE to your verified phone number to receive all SMS
-    # during testing/evaluations even if customer profile has no phone
-    TWILIO_TEST_PHONE: Optional[str] = None
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"

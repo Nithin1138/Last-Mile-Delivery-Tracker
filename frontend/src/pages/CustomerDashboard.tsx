@@ -439,8 +439,8 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">SMS Delivery Alerts</h3>
-                  <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Automated Twilio delivery event triggers</p>
+                  <h3 className="text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">Contact & Notification Settings</h3>
+                  <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Transactional notification preferences</p>
                 </div>
               </div>
               <button

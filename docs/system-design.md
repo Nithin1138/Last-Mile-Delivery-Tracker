@@ -66,7 +66,7 @@ If `rowcount == 0` (indicating another transaction claimed the agent in parallel
 Real-world logistics requires graceful recovery from failed delivery attempts without losing audit history.
 
 ```
-OUT_FOR_DELIVERY ──► Mark FAILED (+ reason) ──► Notify Customer (Email + SMS)
+OUT_FOR_DELIVERY ──► Mark FAILED (+ reason) ──► Notify Customer (Transactional Email)
                                                           │
                                               Customer Reschedules (New Date)
                                                           │

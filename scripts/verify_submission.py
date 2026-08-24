@@ -138,6 +138,26 @@ def check_backend_compilation():
 
 def check_frontend_build():
     print_step("Validating frontend TypeScript build")
+    node_modules = FRONTEND_DIR / "node_modules"
+    if not node_modules.exists():
+        print("   📦 Fresh clone / extracted ZIP detected: running npm ci...")
+        ci_res = subprocess.run(
+            ["npm", "ci"],
+            cwd=str(FRONTEND_DIR),
+            capture_output=True,
+            text=True,
+        )
+        if ci_res.returncode != 0:
+            print("   ⚠️ npm ci fallback to npm install...")
+            install_res = subprocess.run(
+                ["npm", "install"],
+                cwd=str(FRONTEND_DIR),
+                capture_output=True,
+                text=True,
+            )
+            if install_res.returncode != 0:
+                print_fail(f"npm install failed:\n{install_res.stderr}\n{install_res.stdout}")
+
     res = subprocess.run(
         ["npm", "run", "build"],
         cwd=str(FRONTEND_DIR),
@@ -152,16 +172,28 @@ def check_frontend_build():
 def run_backend_tests():
     print_step("Running complete backend pytest suite")
     venv_pytest = BACKEND_DIR / "venv" / "bin" / "pytest"
-    pytest_bin = str(venv_pytest) if venv_pytest.exists() else "pytest"
+    if venv_pytest.exists():
+        cmd = [str(venv_pytest), "backend/tests", "-v"]
+    else:
+        cmd = ["pytest", "backend/tests", "-v"]
 
     res = subprocess.run(
-        [pytest_bin, "backend/tests", "-v"],
+        cmd,
         cwd=str(ROOT_DIR),
         capture_output=True,
         text=True,
     )
     if res.returncode != 0:
-        print_fail(f"Backend test suite failed:\n{res.stderr}\n{res.stdout}")
+        # Fallback to python3 -m pytest
+        fallback_res = subprocess.run(
+            ["python3", "-m", "pytest", "backend/tests", "-v"],
+            cwd=str(ROOT_DIR),
+            capture_output=True,
+            text=True,
+        )
+        if fallback_res.returncode != 0:
+            print_fail(f"Backend test suite failed:\n{res.stderr}\n{res.stdout}")
+        res = fallback_res
     
     # Check that summary line confirms all tests passed
     summary_match = re.search(r"(\d+)\s+passed", res.stdout)

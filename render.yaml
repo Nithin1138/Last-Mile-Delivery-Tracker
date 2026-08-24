@@ -28,14 +28,7 @@ services:
         value: "onboarding@resend.dev"
       - key: RESEND_TEST_EMAIL
         sync: false
-      - key: TWILIO_ACCOUNT_SID
-        sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_FROM_NUMBER
-        sync: false
-      - key: TWILIO_TEST_PHONE
-        sync: false
+
 
 
   # Frontend Static Site
