@@ -2,9 +2,10 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-// Lazy-load all pages — each becomes a separate JS chunk, loaded on demand
+import { Navbar } from './components/Navbar';
+
+// Lazy-load page components — each becomes a separate JS chunk
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const Navbar = lazy(() => import('./components/Navbar').then(m => ({ default: m.Navbar })));
 const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
 const AgentDashboard = lazy(() => import('./pages/AgentDashboard').then(m => ({ default: m.AgentDashboard })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -61,9 +62,7 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] dark:bg-[#111417] text-[#171A1F] dark:text-[#E8EAED] flex flex-col font-sans transition-colors duration-150">
-      <Suspense fallback={null}>
-        <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
-      </Suspense>
+      <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
       <main className="flex-1 pb-16">
         <Suspense fallback={<PageShimmer />}>

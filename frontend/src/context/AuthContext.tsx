@@ -38,6 +38,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Fast in-memory token & user cache for instant demo persona switching
+const demoTokenCache: Record<string, { user: User; token: string }> = {};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -59,7 +62,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const me = await authApi.getMe();
           setUser(me);
-          if (!DEMO_EMAILS.includes(me.email)) {
+          if (DEMO_EMAILS.includes(me.email)) {
+            demoTokenCache[me.email] = { user: me, token: storedToken };
+          } else {
             const custom = { user: me, token: storedToken };
             setSavedCustomAccount(custom);
             localStorage.setItem('saved_custom_account', JSON.stringify(custom));
@@ -83,7 +88,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(res.access_token);
     setUser(res.user);
 
-    if (!DEMO_EMAILS.includes(res.user.email)) {
+    if (DEMO_EMAILS.includes(res.user.email)) {
+      demoTokenCache[res.user.email] = { user: res.user, token: res.access_token };
+    } else {
       const custom = { user: res.user, token: res.access_token };
       setSavedCustomAccount(custom);
       localStorage.setItem('saved_custom_account', JSON.stringify(custom));
@@ -110,7 +117,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const quickLogin = async (email: string, pass: string) => {
+    // 1. Instant Cache Hit (0ms UI state change)
+    if (demoTokenCache[email]) {
+      const cached = demoTokenCache[email];
+      localStorage.setItem('token', cached.token);
+      setToken(cached.token);
+      setUser(cached.user);
+      return;
+    }
+
+    // 2. Network Fetch & Cache
     const res = await authApi.login(email, pass);
+    demoTokenCache[email] = { user: res.user, token: res.access_token };
     localStorage.setItem('token', res.access_token);
     setToken(res.access_token);
     setUser(res.user);

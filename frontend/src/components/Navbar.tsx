@@ -28,24 +28,37 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
 
   if (!user) return null;
 
+  const [switchingRole, setSwitchingRole] = React.useState<string | null>(null);
+
+  const handleSwitchPersona = async (email: string, pass: string, roleKey: string) => {
+    if (switchingRole) return;
+    setSwitchingRole(roleKey);
+    try {
+      await quickLogin(email, pass);
+      onSelectTab('dashboard');
+    } finally {
+      setSwitchingRole(null);
+    }
+  };
+
   const isCustomUserActive = savedCustomAccount && user.id === savedCustomAccount.user.id;
 
   const handleCustomerSwitch = async () => {
     if (savedCustomAccount && savedCustomAccount.user.role === 'CUSTOMER') {
       restoreCustomAccount();
+      onSelectTab('dashboard');
     } else {
-      await quickLogin('alekhya.reddy@gmail.com', 'customer123');
+      await handleSwitchPersona('alekhya.reddy@gmail.com', 'customer123', 'customer_b2c');
     }
-    onSelectTab('dashboard');
   };
 
   const handleAgentSwitch = async () => {
     if (savedCustomAccount && savedCustomAccount.user.role === 'AGENT') {
       restoreCustomAccount();
+      onSelectTab('dashboard');
     } else {
-      await quickLogin('babu.naidu@delivery.dev', 'agent123');
+      await handleSwitchPersona('babu.naidu@delivery.dev', 'agent123', 'agent');
     }
-    onSelectTab('dashboard');
   };
 
   const navContainerRef = React.useRef<HTMLElement>(null);
@@ -98,53 +111,51 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
             )}
 
             <button
-              onClick={async () => {
-                await quickLogin('admin@lastmile.dev', 'admin123');
-                onSelectTab('dashboard');
-              }}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                user.role === 'ADMIN'
+              onClick={() => handleSwitchPersona('admin@lastmile.dev', 'admin123', 'admin')}
+              disabled={!!switchingRole}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                user.role === 'ADMIN' || switchingRole === 'admin'
                   ? 'bg-[#3157A6] text-white font-semibold shadow-2xs dark:bg-[#6D8ED4] dark:text-[#111417]'
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Admin (Veera Nithin)
+              <span>Admin (Veera Nithin)</span>
             </button>
 
             <button
               onClick={handleCustomerSwitch}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                user.role === 'CUSTOMER' && (isCustomUserActive || user.email.includes('alekhya') || user.email.includes('rohit'))
+              disabled={!!switchingRole}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                (user.role === 'CUSTOMER' && (isCustomUserActive || user.email.includes('alekhya') || user.email.includes('rohit'))) || switchingRole === 'customer_b2c'
                   ? 'bg-[#3157A6] text-white font-semibold shadow-2xs dark:bg-[#6D8ED4] dark:text-[#111417]'
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Customer {savedCustomAccount?.user.role === 'CUSTOMER' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(Alekhya B2C)'}
+              <span>Customer {savedCustomAccount?.user.role === 'CUSTOMER' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(Alekhya B2C)'}</span>
             </button>
 
             <button
-              onClick={async () => {
-                await quickLogin('pujitha.logistics@andhraexports.in', 'customer123');
-                onSelectTab('dashboard');
-              }}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                user.role === 'CUSTOMER' && (user.email.includes('pujitha') || user.email.includes('acme') || user.email.includes('andhra'))
+              onClick={() => handleSwitchPersona('pujitha.logistics@andhraexports.in', 'customer123', 'customer_b2b')}
+              disabled={!!switchingRole}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                (user.role === 'CUSTOMER' && (user.email.includes('pujitha') || user.email.includes('acme') || user.email.includes('andhra'))) || switchingRole === 'customer_b2b'
                   ? 'bg-[#3157A6] text-white font-semibold shadow-2xs dark:bg-[#6D8ED4] dark:text-[#111417]'
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Customer (Pujitha B2B)
+              <span>Customer (Pujitha B2B)</span>
             </button>
 
             <button
               onClick={handleAgentSwitch}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                user.role === 'AGENT'
+              disabled={!!switchingRole}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                user.role === 'AGENT' || switchingRole === 'agent'
                   ? 'bg-[#3157A6] text-white font-semibold shadow-2xs dark:bg-[#6D8ED4] dark:text-[#111417]'
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Agent {savedCustomAccount?.user.role === 'AGENT' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(Babu Naidu)'}
+              <span>Agent {savedCustomAccount?.user.role === 'AGENT' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(Babu Naidu)'}</span>
             </button>
           </div>
         </div>
