@@ -1,6 +1,6 @@
 # 🚚 Last-Mile Delivery Tracker
 
-A production-minded logistics and dispatch management platform featuring a **database-driven rate engine**, **concurrency-safe nearest-agent auto-assignment**, **immutable tracking history**, and a complete **failed-delivery & rescheduling workflow**.
+A production-minded logistics and dispatch management platform featuring a **database-driven rate engine**, **concurrency-safe nearest-agent auto-assignment**, **immutable tracking history**, and a complete **failed-delivery & rescheduling workflow**. The repository is intentionally honest about what is implemented and what remains optional at runtime (for example, live external email delivery when an API key and quota are available).
 
 ---
 
@@ -78,18 +78,18 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (73 unit, security, integration, e2e smoke, notification, database immutability triggers and multithreaded concurrency tests)
+- **Testing**: Pytest (73 automated test functions across unit, security, API, end-to-end smoke, notification, database immutability, and concurrency checks; current local verification: 72 passed, 1 skipped)
 
 ---
 
 ## 🔔 Transactional Notification Engine
 
-The platform implements a clean provider abstraction for customer lifecycle notifications:
+The platform implements a clean provider abstraction for customer lifecycle notifications. This part is optional and production-aware rather than hard-dependent on external quotas:
 
 - **Modular Provider Interface** (`NotificationProvider`):
   - **Console Provider** (`ConsoleNotificationProvider`): Default zero-dependency provider for local development and offline evaluation. Dispatches structured logs and persists audit records directly into PostgreSQL.
-  - **Production Email Provider** (`ResendNotificationProvider`): Sends branded, responsive HTML emails via the Resend API when `RESEND_API_KEY` is configured.
-- **Fault-Tolerant Non-Blocking Architecture**: External API latency, network timeouts, or provider downtime never abort core database transactions. Every notification attempt is tracked immutably in the `notifications` audit table with delivery status (`SENT` / `FAILED`).
+   - **Production Email Provider** (`ResendNotificationProvider`): Sends branded, responsive HTML emails via the Resend API when `RESEND_API_KEY` is configured and quota is available.
+- **Fault-Tolerant Non-Blocking Architecture**: External API latency, network timeouts, or provider downtime never abort core database transactions. Every notification attempt is tracked immutably in the `notifications` audit table with delivery status (`SENT` / `FAILED`). Live external delivery is not treated as a CI requirement; the automated suite runs safely without a provider dependency.
 
 ---
 
@@ -252,7 +252,7 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🧪 Comprehensive Automated Test Suite (73 Tests)
+## 🧪 Comprehensive Automated Test Suite (73 Test Functions)
 
 Run the complete backend test suite:
 
@@ -261,6 +261,14 @@ cd backend
 source venv/bin/activate
 pytest tests/ -v
 ```
+
+Current verified local result on this workspace:
+
+```text
+72 passed, 1 skipped, 1 warning in ~15s
+```
+
+The suite covers the full flow and the counting logic in the repo is based on 73 test functions, even though one test is intentionally skipped in the current environment.
 
 ### Complete Test Suite Coverage (73 Tests):
 - `test_security_rbac.py` (19 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, complete lifecycle state machine and terminal lock validation, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.

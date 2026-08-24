@@ -20,7 +20,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgrespassword
-          POSTGRES_DB: delivery_tracker_test
+          POSTGRES_DB: delivery_tracker
         ports:
           - 5432:5432
         options: >-
@@ -39,6 +39,13 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
+      - name: Install PostgreSQL Client & Create Test DB
+        env:
+          PGPASSWORD: postgrespassword
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql -h localhost -U postgres -c "CREATE DATABASE delivery_tracker_test;" || true
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -50,7 +57,7 @@ jobs:
 
       - name: Run Backend Pytest Suite
         env:
-          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker_test
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker
           TEST_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker_test
           JWT_SECRET_KEY: test-secret-key-32-characters-length-for-ci
           APP_ENV: testing
@@ -94,6 +101,21 @@ jobs:
     needs: [backend-tests, frontend-build]
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: delivery_tracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -102,11 +124,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package*.json
+
+      - name: Install PostgreSQL Client & Create Test DB
+        env:
+          PGPASSWORD: postgrespassword
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql -h localhost -U postgres -c "CREATE DATABASE delivery_tracker_test;" || true
 
       - name: Install Backend Dependencies
         run: |
@@ -118,5 +150,10 @@ jobs:
           npm ci
 
       - name: Execute Full Submission Verification Suite
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker
+          TEST_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker_test
+          JWT_SECRET_KEY: test-secret-key-32-characters-length-for-ci
+          APP_ENV: testing
         run: |
           python3 scripts/verify_submission.py

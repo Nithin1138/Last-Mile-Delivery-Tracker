@@ -129,7 +129,7 @@ To guarantee audit compliance and non-repudiation, the database enforces strict 
 To run all automated test suites and operational sanity verifications:
 
 ```bash
-# Run full backend pytest suite (73 tests)
+# Run full backend pytest suite (73 automated test functions; current verified result: 72 passed, 1 skipped)
 cd backend && source venv/bin/activate && pytest tests/ -v
 
 # Run pre-submission verification audit
