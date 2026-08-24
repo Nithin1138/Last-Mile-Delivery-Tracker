@@ -13,9 +13,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
+# ---------------------------------------------------------------------------
+# Force ConsoleNotificationProvider in all tests — never send real emails.
+# This prevents Resend free-tier rate limit exhaustion during pytest runs.
+# Must be set BEFORE importing app/settings so the factory sees the override.
+# ---------------------------------------------------------------------------
+os.environ["RESEND_API_KEY"] = ""
+
 from app.database import Base, get_db, install_immutability_triggers
 from app.main import app
 from app.config import settings
+
+# Explicitly ensure settings object has RESEND_API_KEY disabled during test runs
+settings.RESEND_API_KEY = None
+
 from app.models.models import (
     User, RoleEnum, Zone, Area, RateCard, CODSurcharge,
     OrderTypeEnum, ZoneRelationEnum, DeliveryAgent, AgentStatusEnum
