@@ -1,0 +1,122 @@
+name: CI/CD Pipeline & Quality Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Backend Automated Testing & Lint
+  # ---------------------------------------------------------------------------
+  backend-tests:
+    name: Backend Test Suite (73 Tests)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: delivery_tracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Verify Backend Compilation
+        run: |
+          python -m compileall backend/app
+
+      - name: Run Backend Pytest Suite
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker_test
+          TEST_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/delivery_tracker_test
+          JWT_SECRET_KEY: test-secret-key-32-characters-length-for-ci
+          APP_ENV: testing
+        run: |
+          cd backend
+          pytest -v
+
+  # ---------------------------------------------------------------------------
+  # 2. Frontend TypeScript Build & Typecheck
+  # ---------------------------------------------------------------------------
+  frontend-build:
+    name: Frontend TypeScript & Asset Compilation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package*.json
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Compile Frontend Bundle
+        run: |
+          cd frontend
+          npm run build
+
+  # ---------------------------------------------------------------------------
+  # 3. Pre-Submission Sanity Check & Verification
+  # ---------------------------------------------------------------------------
+  sanity-verification:
+    name: Submission Integrity & File Verification
+    needs: [backend-tests, frontend-build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Backend Dependencies
+        run: |
+          pip install -r backend/requirements.txt pytest
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Execute Full Submission Verification Suite
+        run: |
+          python3 scripts/verify_submission.py
