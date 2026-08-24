@@ -32,13 +32,16 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     ],
     OrderStatusEnum.ASSIGNED.value: [
         OrderStatusEnum.PICKED_UP.value,
+        OrderStatusEnum.FAILED.value,
         OrderStatusEnum.CANCELLED.value,
     ],
     OrderStatusEnum.PICKED_UP.value: [
         OrderStatusEnum.IN_TRANSIT.value,
+        OrderStatusEnum.FAILED.value,
     ],
     OrderStatusEnum.IN_TRANSIT.value: [
         OrderStatusEnum.OUT_FOR_DELIVERY.value,
+        OrderStatusEnum.FAILED.value,
     ],
     OrderStatusEnum.OUT_FOR_DELIVERY.value: [
         OrderStatusEnum.DELIVERED.value,
@@ -170,14 +173,34 @@ def mark_delivery_attempt_failed(
         attempt.failure_reason = failure_reason
         attempt.completed_at = datetime.now(timezone.utc)
         db.flush()
-
-        log_event(
-            "DELIVERY_ATTEMPT_FAILED",
-            order=str(order.id),
-            attempt=attempt.attempt_number,
-            agent=str(attempt.agent_id),
-            reason=failure_reason,
+    else:
+        max_attempt = (
+            db.query(DeliveryAttempt.attempt_number)
+            .filter(DeliveryAttempt.order_id == order.id)
+            .order_by(DeliveryAttempt.attempt_number.desc())
+            .first()
         )
+        attempt_num = (max_attempt[0] + 1) if max_attempt else 1
+        attempt = DeliveryAttempt(
+            order_id=order.id,
+            attempt_number=attempt_num,
+            agent_id=order.agent_id,
+            scheduled_date=order.scheduled_date,
+            status=DeliveryAttemptStatusEnum.FAILED,
+            failure_reason=failure_reason,
+            started_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(timezone.utc),
+        )
+        db.add(attempt)
+        db.flush()
+
+    log_event(
+        "DELIVERY_ATTEMPT_FAILED",
+        order=str(order.id),
+        attempt=attempt.attempt_number,
+        agent=str(attempt.agent_id),
+        reason=failure_reason,
+    )
 
     return attempt
 

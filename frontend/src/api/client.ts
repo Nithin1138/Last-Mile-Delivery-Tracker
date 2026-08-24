@@ -12,6 +12,7 @@ import type {
   Area,
   RateCard,
   CODSurcharge,
+  NotificationRecord,
 } from '../types';
 
 let rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
@@ -74,6 +75,14 @@ export const authApi = {
   },
   updateMe: async (payload: { name?: string; phone?: string }) => {
     const res = await apiClient.put('/auth/me', payload);
+    return res.data;
+  },
+  forgotPassword: async (email: string): Promise<{ message: string; status: string }> => {
+    const res = await apiClient.post<{ message: string; status: string }>('/auth/forgot-password', { email });
+    return res.data;
+  },
+  resetPassword: async (payload: { email: string; otp_code: string; new_password: string }): Promise<{ message: string; status: string }> => {
+    const res = await apiClient.post<{ message: string; status: string }>('/auth/reset-password', payload);
     return res.data;
   },
 };
@@ -147,6 +156,11 @@ export const ordersApi = {
 
   getAssignments: async (id: string): Promise<AssignmentDecision[]> => {
     const res = await apiClient.get<AssignmentDecision[]>(`/orders/${id}/assignments`);
+    return res.data;
+  },
+
+  getNotifications: async (id: string): Promise<NotificationRecord[]> => {
+    const res = await apiClient.get<NotificationRecord[]>(`/orders/${id}/notifications`);
     return res.data;
   },
 };

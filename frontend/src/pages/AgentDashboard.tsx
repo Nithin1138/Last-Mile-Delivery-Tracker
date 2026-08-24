@@ -50,9 +50,7 @@ export const AgentDashboard: React.FC = () => {
     if (showLoading) setLoading(true);
     setError(null);
     try {
-      const data = await ordersApi.listOrders({
-        agent_id: user?.id,
-      });
+      const data = await ordersApi.listOrders();
       setOrders(data.orders);
     } catch (err: any) {
       setError(extractErrorMessage(err));

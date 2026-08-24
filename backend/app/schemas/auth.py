@@ -49,3 +49,19 @@ class UserResponse(BaseModel):
             role=user.role.value if hasattr(user.role, 'value') else user.role,
             is_active=user.is_active,
         )
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+    otp_code: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]{6}$")
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class MessageResponse(BaseModel):
+    message: str
+    status: str = "success"
+

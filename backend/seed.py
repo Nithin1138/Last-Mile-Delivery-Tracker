@@ -54,59 +54,59 @@ def seed(safe_if_exists: bool = False):
         # -------------------------------------------------------------------
         # 1. Users
         # -------------------------------------------------------------------
-        print("👤 Seeding Users...")
+        print("👤 Seeding Users")
         admin = User(
             email="admin@lastmile.dev",
             password_hash=hash_password("admin123"),
-            name="Siddharth Mehta (Operations Admin)",
+            name="Veera Nithin (Operations Admin)",
             phone="+919876543210",
             role=RoleEnum.ADMIN,
         )
 
         b2b_customer = User(
-            email="logistics@acmecorp.in",
+            email="pujitha.logistics@andhraexports.in",
             password_hash=hash_password("customer123"),
-            name="Acme Corp Supply Chain",
+            name="Pujitha Rao (Andhra Exports & Logistics)",
             phone="+919811122233",
             role=RoleEnum.CUSTOMER,
         )
 
         b2c_customer = User(
-            email="rohit.verma@gmail.com",
+            email="alekhya.reddy@gmail.com",
             password_hash=hash_password("customer123"),
-            name="Rohit Verma",
+            name="Alekhya Reddy",
             phone="+919822233344",
             role=RoleEnum.CUSTOMER,
         )
 
         agent_user_1 = User(
-            email="vikram.singh@delivery.dev",
+            email="babu.naidu@delivery.dev",
             password_hash=hash_password("agent123"),
-            name="Vikram Singh",
+            name="Babu Naidu",
             phone="+919833344455",
             role=RoleEnum.AGENT,
         )
 
         agent_user_2 = User(
-            email="rahul.sharma@delivery.dev",
+            email="srinivas.rao@delivery.dev",
             password_hash=hash_password("agent123"),
-            name="Rahul Sharma",
+            name="Srinivas Rao",
             phone="+919844455566",
             role=RoleEnum.AGENT,
         )
 
         agent_user_3 = User(
-            email="amit.kumar@delivery.dev",
+            email="kalyan.varma@delivery.dev",
             password_hash=hash_password("agent123"),
-            name="Amit Kumar",
+            name="Kalyan Varma",
             phone="+919855566677",
             role=RoleEnum.AGENT,
         )
 
         agent_user_4 = User(
-            email="priya.patel@delivery.dev",
+            email="ananya.chowdary@delivery.dev",
             password_hash=hash_password("agent123"),
-            name="Priya Patel",
+            name="Ananya Chowdary",
             phone="+919866677788",
             role=RoleEnum.AGENT,
         )
@@ -115,29 +115,29 @@ def seed(safe_if_exists: bool = False):
         db.flush()
 
         # -------------------------------------------------------------------
-        # 2. Zones & Areas
+        # 2. Zones & Areas (Hyderabad / Cyberabad, Vijayawada / Guntur, Visakhapatnam)
         # -------------------------------------------------------------------
         print("🗺️ Seeding Zones & Pincode Areas...")
-        zone_north = Zone(name="North (Delhi NCR)")
-        zone_south = Zone(name="South (Mumbai Metro)")
-        zone_east = Zone(name="East (Bengaluru Hub)")
+        zone_north = Zone(name="North (Hyderabad / Cyberabad Hub)")
+        zone_south = Zone(name="South (Vijayawada / Guntur Metro)")
+        zone_east = Zone(name="East (Visakhapatnam Port City Hub)")
         db.add_all([zone_north, zone_south, zone_east])
         db.flush()
 
         areas = [
-            # Delhi NCR (North)
-            Area(pincode="110001", name="Connaught Place, Central Delhi", zone_id=zone_north.id),
-            Area(pincode="110016", name="Hauz Khas, South Delhi", zone_id=zone_north.id),
-            Area(pincode="110020", name="Okhla Industrial Area Phase-III", zone_id=zone_north.id),
-            Area(pincode="110092", name="Laxmi Nagar, East Delhi", zone_id=zone_north.id),
-            # Mumbai Metro (South)
-            Area(pincode="400001", name="Fort / Nariman Point, South Mumbai", zone_id=zone_south.id),
-            Area(pincode="400051", name="Bandra Kurla Complex (BKC)", zone_id=zone_south.id),
-            Area(pincode="400076", name="Powai Hiranandani", zone_id=zone_south.id),
-            # Bengaluru Hub (East)
-            Area(pincode="560001", name="MG Road / Brigade Road, Central", zone_id=zone_east.id),
-            Area(pincode="560034", name="Koramangala 4th Block", zone_id=zone_east.id),
-            Area(pincode="560100", name="Electronic City Phase-I", zone_id=zone_east.id),
+            # Hyderabad / Cyberabad (North)
+            Area(pincode="500001", name="Abids / Charminar, Hyderabad", zone_id=zone_north.id),
+            Area(pincode="500081", name="HITEC City / Madhapur, Cyberabad", zone_id=zone_north.id),
+            Area(pincode="500034", name="Banjara Hills / Jubilee Hills, Hyderabad", zone_id=zone_north.id),
+            Area(pincode="500090", name="Kukatpally / KPHB Colony, Hyderabad", zone_id=zone_north.id),
+            # Vijayawada / Guntur (South)
+            Area(pincode="520001", name="Governorpet / One Town, Vijayawada", zone_id=zone_south.id),
+            Area(pincode="520010", name="Benz Circle / MG Road, Vijayawada", zone_id=zone_south.id),
+            Area(pincode="522002", name="Arundelpet / Brodipet, Guntur", zone_id=zone_south.id),
+            # Visakhapatnam (East)
+            Area(pincode="530001", name="Main Road / Port Area, Visakhapatnam", zone_id=zone_east.id),
+            Area(pincode="530017", name="MVP Colony, Visakhapatnam", zone_id=zone_east.id),
+            Area(pincode="530045", name="Gajuwaka Industrial Hub, Visakhapatnam", zone_id=zone_east.id),
         ]
         db.add_all(areas)
         db.flush()
@@ -151,8 +151,8 @@ def seed(safe_if_exists: bool = False):
             availability_status=AgentStatusEnum.AVAILABLE,
             max_capacity=5,
             current_load=0,
-            latitude=28.6315,  # Connaught Place, Delhi
-            longitude=77.2167,
+            latitude=17.4485,  # Madhapur / HITEC City, Hyderabad
+            longitude=78.3750,
             current_zone_id=zone_north.id,
         )
 
@@ -161,8 +161,8 @@ def seed(safe_if_exists: bool = False):
             availability_status=AgentStatusEnum.BUSY,
             max_capacity=5,
             current_load=2,
-            latitude=28.5355,  # Hauz Khas / Saket, Delhi
-            longitude=77.2410,
+            latitude=17.4123,  # Banjara Hills, Hyderabad
+            longitude=78.4350,
             current_zone_id=zone_north.id,
         )
 
@@ -171,8 +171,8 @@ def seed(safe_if_exists: bool = False):
             availability_status=AgentStatusEnum.AVAILABLE,
             max_capacity=5,
             current_load=0,
-            latitude=18.9220,  # Fort, Mumbai
-            longitude=72.8347,
+            latitude=16.5062,  # Benz Circle, Vijayawada
+            longitude=80.6480,
             current_zone_id=zone_south.id,
         )
 
@@ -181,9 +181,9 @@ def seed(safe_if_exists: bool = False):
             availability_status=AgentStatusEnum.OFFLINE,
             max_capacity=5,
             current_load=0,
-            latitude=19.0600,  # BKC, Mumbai
-            longitude=72.8600,
-            current_zone_id=zone_south.id,
+            latitude=17.6868,  # MVP Colony, Visakhapatnam
+            longitude=83.2185,
+            current_zone_id=zone_east.id,
         )
 
         db.add_all([agent_1, agent_2, agent_3, agent_4])
@@ -251,22 +251,22 @@ def seed(safe_if_exists: bool = False):
         # -------------------------------------------------------------------
         print("📦 Seeding Demo Orders across all states...")
 
-        # Order 1: DELIVERED (B2C INTRA in Delhi)
+        # Order 1: DELIVERED (B2C INTRA in Hyderabad)
         # 30x20x15 = 9000/5000 = 1.8 kg. Actual: 2.5 kg. Chargeable: 2.5 kg
         # Base: 40 + (15 * 2.5) = 77.50. Prepaid -> Total: 77.50
         order_delivered = Order(
             customer_id=b2c_customer.id,
             agent_id=agent_1.id,
-            pickup_address="Block B, Connaught Place, New Delhi",
-            pickup_pincode="110001",
+            pickup_address="Cyber Towers, HITEC City, Hyderabad",
+            pickup_pincode="500081",
             pickup_zone_id=zone_north.id,
-            pickup_latitude=28.6315,
-            pickup_longitude=77.2167,
-            drop_address="Green Park Extension, South Delhi",
-            drop_pincode="110016",
+            pickup_latitude=17.4485,
+            pickup_longitude=78.3750,
+            drop_address="Road No. 36, Jubilee Hills, Hyderabad",
+            drop_pincode="500034",
             drop_zone_id=zone_north.id,
-            drop_latitude=28.5580,
-            drop_longitude=77.2030,
+            drop_latitude=17.4320,
+            drop_longitude=78.4070,
             length_cm=Decimal("30"),
             breadth_cm=Decimal("20"),
             height_cm=Decimal("15"),
@@ -294,7 +294,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status=None,
                 new_status="CREATED",
                 changed_by=b2c_customer.id,
-                reason="Order placed by customer",
+                reason="Order placed by customer (Alekhya Reddy)",
                 created_at=now - timedelta(hours=6),
             ),
             OrderStatusHistory(
@@ -302,7 +302,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="CREATED",
                 new_status="ASSIGNED",
                 changed_by=admin.id,
-                reason="Auto-assigned to nearest agent in Delhi NCR (Vikram Singh, 1.2km)",
+                reason="Auto-assigned to nearest agent in Hyderabad Hub (Babu Naidu, 1.2km)",
                 created_at=now - timedelta(hours=5, minutes=45),
             ),
             OrderStatusHistory(
@@ -310,7 +310,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="ASSIGNED",
                 new_status="PICKED_UP",
                 changed_by=agent_user_1.id,
-                reason="Package picked up from Connaught Place",
+                reason="Package picked up from Cyber Towers, HITEC City",
                 created_at=now - timedelta(hours=4),
             ),
             OrderStatusHistory(
@@ -318,7 +318,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="PICKED_UP",
                 new_status="IN_TRANSIT",
                 changed_by=agent_user_1.id,
-                reason="Package en route to Green Park",
+                reason="Package en route to Jubilee Hills",
                 created_at=now - timedelta(hours=3),
             ),
             OrderStatusHistory(
@@ -326,7 +326,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="IN_TRANSIT",
                 new_status="OUT_FOR_DELIVERY",
                 changed_by=agent_user_1.id,
-                reason="Agent out for delivery at recipient location",
+                reason="Agent Babu Naidu out for delivery at recipient residence",
                 created_at=now - timedelta(hours=2),
             ),
             OrderStatusHistory(
@@ -334,7 +334,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="OUT_FOR_DELIVERY",
                 new_status="DELIVERED",
                 changed_by=agent_user_1.id,
-                reason="Package delivered to security desk with OTP verification",
+                reason="Package delivered with customer OTP verification",
                 created_at=now - timedelta(hours=1),
             ),
         ])
@@ -348,22 +348,22 @@ def seed(safe_if_exists: bool = False):
             created_at=now - timedelta(hours=5, minutes=45),
         ))
 
-        # Order 2: FAILED & RESCHEDULED (B2C INTER: Delhi -> Mumbai)
+        # Order 2: FAILED & RESCHEDULED (B2C INTER: Hyderabad -> Vijayawada)
         # 50x40x30 = 12 kg volumetric. Actual: 8kg. Chargeable: 12kg (Canonical test case)
         # Base: 50 + (20 * 12) = 290. COD: 25 + 2.5%*290 = 32.25. Total: 322.25
         order_failed = Order(
             customer_id=b2c_customer.id,
             agent_id=None,  # Unassigned pending reassignment
-            pickup_address="Tower 4, Okhla Phase 3, Delhi",
-            pickup_pincode="110020",
+            pickup_address="KPHB Colony Phase 3, Kukatpally, Hyderabad",
+            pickup_pincode="500090",
             pickup_zone_id=zone_north.id,
-            pickup_latitude=28.5245,
-            pickup_longitude=77.2790,
-            drop_address="Hiranandani Gardens, Powai, Mumbai",
-            drop_pincode="400076",
+            pickup_latitude=17.4930,
+            pickup_longitude=78.4010,
+            drop_address="Benz Circle, MG Road, Vijayawada",
+            drop_pincode="520010",
             drop_zone_id=zone_south.id,
-            drop_latitude=19.1176,
-            drop_longitude=72.9060,
+            drop_latitude=16.5062,
+            drop_longitude=80.6480,
             length_cm=Decimal("50"),
             breadth_cm=Decimal("40"),
             height_cm=Decimal("30"),
@@ -399,7 +399,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="CREATED",
                 new_status="ASSIGNED",
                 changed_by=admin.id,
-                reason="Assigned to Mumbai Agent Amit Kumar",
+                reason="Assigned to Vijayawada Agent Kalyan Varma",
                 created_at=now - timedelta(hours=18),
             ),
             OrderStatusHistory(
@@ -407,7 +407,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="ASSIGNED",
                 new_status="PICKED_UP",
                 changed_by=agent_user_3.id,
-                reason="Hub handoff completed",
+                reason="Hub handoff completed at Vijayawada Central",
                 created_at=now - timedelta(hours=12),
             ),
             OrderStatusHistory(
@@ -415,7 +415,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="PICKED_UP",
                 new_status="IN_TRANSIT",
                 changed_by=agent_user_3.id,
-                reason="Arrived at Mumbai Powai delivery center",
+                reason="Arrived at Benz Circle delivery center",
                 created_at=now - timedelta(hours=8),
             ),
             OrderStatusHistory(
@@ -423,7 +423,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="IN_TRANSIT",
                 new_status="OUT_FOR_DELIVERY",
                 changed_by=agent_user_3.id,
-                reason="First delivery attempt",
+                reason="First delivery attempt by Kalyan Varma",
                 created_at=now - timedelta(hours=5),
             ),
             OrderStatusHistory(
@@ -431,7 +431,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="OUT_FOR_DELIVERY",
                 new_status="FAILED",
                 changed_by=agent_user_3.id,
-                reason="Customer unavailable at delivery address; phone switched off",
+                reason="Customer unavailable at delivery address; phone unreachable",
                 created_at=now - timedelta(hours=4),
             ),
             OrderStatusHistory(
@@ -450,19 +450,19 @@ def seed(safe_if_exists: bool = False):
             started_at=now - timedelta(hours=5),
             completed_at=now - timedelta(hours=4),
             status=DeliveryAttemptStatusEnum.FAILED,
-            failure_reason="Customer unavailable at delivery address; phone switched off",
+            failure_reason="Customer unavailable at delivery address; phone unreachable",
             created_at=now - timedelta(hours=18),
         ))
 
-        # Order 3: IN_TRANSIT (B2B INTRA: Delhi CP -> Laxmi Nagar)
+        # Order 3: IN_TRANSIT (B2B INTRA: Hyderabad Abids -> Madhapur)
         order_intransit = Order(
             customer_id=b2b_customer.id,
             agent_id=agent_2.id,
-            pickup_address="Warehouse 2, Connaught Place, Delhi",
-            pickup_pincode="110001",
+            pickup_address="Warehouse 2, Abids Commercial Hub, Hyderabad",
+            pickup_pincode="500001",
             pickup_zone_id=zone_north.id,
-            drop_address="Retail Hub, Laxmi Nagar, East Delhi",
-            drop_pincode="110092",
+            drop_address="Logistics Terminal, Madhapur, Hyderabad",
+            drop_pincode="500081",
             drop_zone_id=zone_north.id,
             length_cm=Decimal("40"),
             breadth_cm=Decimal("30"),
@@ -490,7 +490,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status=None,
                 new_status="CREATED",
                 changed_by=b2b_customer.id,
-                reason="Bulk merchant shipment created",
+                reason="Bulk merchant shipment created by Pujitha Rao",
                 created_at=now - timedelta(hours=3),
             ),
             OrderStatusHistory(
@@ -498,7 +498,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="CREATED",
                 new_status="ASSIGNED",
                 changed_by=admin.id,
-                reason="Auto-assigned to Agent Rahul Sharma",
+                reason="Auto-assigned to Agent Srinivas Rao",
                 created_at=now - timedelta(hours=2, minutes=30),
             ),
             OrderStatusHistory(
@@ -506,7 +506,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="ASSIGNED",
                 new_status="PICKED_UP",
                 changed_by=agent_user_2.id,
-                reason="Picked up from CP warehouse",
+                reason="Picked up from Abids warehouse",
                 created_at=now - timedelta(hours=1, minutes=45),
             ),
             OrderStatusHistory(
@@ -514,7 +514,7 @@ def seed(safe_if_exists: bool = False):
                 previous_status="PICKED_UP",
                 new_status="IN_TRANSIT",
                 changed_by=agent_user_2.id,
-                reason="Crossing ITO bridge towards Laxmi Nagar",
+                reason="En route via PVNR Expressway towards Madhapur",
                 created_at=now - timedelta(hours=1),
             ),
         ])
@@ -531,16 +531,16 @@ def seed(safe_if_exists: bool = False):
         order_created = Order(
             customer_id=b2c_customer.id,
             agent_id=None,
-            pickup_address="Block C, Connaught Place, New Delhi",
-            pickup_pincode="110001",
+            pickup_address="Inorbit Mall Road, Madhapur, Cyberabad",
+            pickup_pincode="500081",
             pickup_zone_id=zone_north.id,
-            pickup_latitude=28.6328,
-            pickup_longitude=77.2197,
-            drop_address="Saket District Centre, New Delhi",
-            drop_pincode="110016",
+            pickup_latitude=17.4360,
+            pickup_longitude=78.3840,
+            drop_address="Road No. 1, Banjara Hills, Hyderabad",
+            drop_pincode="500034",
             drop_zone_id=zone_north.id,
-            drop_latitude=28.5284,
-            drop_longitude=77.2185,
+            drop_latitude=17.4150,
+            drop_longitude=78.4480,
             length_cm=Decimal("25"),
             breadth_cm=Decimal("15"),
             height_cm=Decimal("10"),
@@ -565,12 +565,12 @@ def seed(safe_if_exists: bool = False):
             previous_status=None,
             new_status="CREATED",
             changed_by=b2c_customer.id,
-            reason="Fresh order awaiting assignment",
+            reason="Fresh order awaiting automated dispatch",
             created_at=now - timedelta(minutes=15),
         ))
 
         db.commit()
-        print("✅ Database successfully seeded with demo accounts, zones, rate cards, and orders!")
+        print("✅ Database successfully seeded with Telugu demo accounts, zones, rate cards, and orders!")
 
     except Exception as e:
         db.rollback()
@@ -582,3 +582,4 @@ def seed(safe_if_exists: bool = False):
 
 if __name__ == "__main__":
     seed()
+

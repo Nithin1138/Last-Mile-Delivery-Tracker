@@ -4,12 +4,16 @@ import { authApi } from '../api/client';
 
 const DEMO_EMAILS = [
   'admin@lastmile.dev',
+  'alekhya.reddy@gmail.com',
+  'pujitha.logistics@andhraexports.in',
+  'babu.naidu@delivery.dev',
+  'srinivas.rao@delivery.dev',
+  'kalyan.varma@delivery.dev',
+  'ananya.chowdary@delivery.dev',
+  // Backward compatibility aliases
   'rohit.verma@gmail.com',
   'logistics@acmecorp.in',
   'vikram.singh@delivery.dev',
-  'rahul.sharma@delivery.dev',
-  'amit.kumar@delivery.dev',
-  'priya.patel@delivery.dev',
 ];
 
 interface CustomAccount {

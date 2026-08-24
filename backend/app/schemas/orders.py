@@ -118,3 +118,19 @@ class OrderListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class NotificationResponse(BaseModel):
+    id: str
+    order_id: Optional[str] = None
+    notification_type: str
+    channel: str
+    subject: Optional[str] = None
+    body: str
+    status: str
+    error_message: Optional[str] = None
+    created_at: str
+
+    class Config:
+        from_attributes = True
+

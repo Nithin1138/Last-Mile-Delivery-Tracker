@@ -1,17 +1,30 @@
 """Authentication routes — register and login."""
 
+import secrets
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.errors import AppError, ErrorCodes
 from app.core.deps import get_current_user
-from sqlalchemy import func
-from app.models.models import User, RoleEnum, DeliveryAgent, AgentStatusEnum, Zone
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserResponse, UpdateProfileRequest
+from app.models.models import User, RoleEnum, DeliveryAgent, AgentStatusEnum, Zone, PasswordResetOTP
+from app.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    TokenResponse,
+    UserResponse,
+    UpdateProfileRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    MessageResponse,
+)
+from app.services.notification_service import get_notification_provider, build_password_reset_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
 
 
 
@@ -126,4 +139,89 @@ def update_me(
     db.commit()
     db.refresh(current_user)
     return UserResponse.from_user(current_user)
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Initiate password reset by generating and emailing a 6-digit verification passcode.
+    """
+    norm_email = req.email.strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == norm_email).first()
+
+    # Always generate 6-digit numeric OTP
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+    if user and user.is_active:
+        # Invalidate any prior active OTPs for this account
+        db.query(PasswordResetOTP).filter(
+            func.lower(PasswordResetOTP.email) == norm_email,
+            PasswordResetOTP.is_used == False,
+        ).update({"is_used": True})
+
+        otp_record = PasswordResetOTP(
+            email=norm_email,
+            otp_code=otp_code,
+            expires_at=expires_at,
+            is_used=False,
+        )
+        db.add(otp_record)
+        db.commit()
+
+        # Send 6-digit passcode via email notification provider (clean HTML template)
+        provider = get_notification_provider()
+        subject = "LastMile Flow — 6-Digit Password Reset Passcode"
+        body = build_password_reset_email(user_name=user.name, otp_code=otp_code)
+        provider.send_email(to_email=user.email, subject=subject, body=body)
+
+    return MessageResponse(
+        message="If an account exists with that email, a 6-digit verification passcode has been sent."
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Verify the 6-digit OTP passcode and update the user's password.
+    """
+    norm_email = req.email.strip().lower()
+    clean_otp = req.otp_code.strip()
+
+    otp_record = (
+        db.query(PasswordResetOTP)
+        .filter(
+            func.lower(PasswordResetOTP.email) == norm_email,
+            PasswordResetOTP.otp_code == clean_otp,
+            PasswordResetOTP.is_used == False,
+        )
+        .order_by(PasswordResetOTP.created_at.desc())
+        .first()
+    )
+
+    now = datetime.now(timezone.utc)
+    if not otp_record or otp_record.expires_at < now:
+        raise AppError(
+            code=ErrorCodes.INVALID_CREDENTIALS,
+            message="Invalid or expired 6-digit passcode.",
+            status_code=400,
+        )
+
+    user = db.query(User).filter(func.lower(User.email) == norm_email).first()
+    if not user or not user.is_active:
+        raise AppError(
+            code=ErrorCodes.NOT_FOUND,
+            message="User account not found or deactivated.",
+            status_code=404,
+        )
+
+    # Hash and update new password
+    user.password_hash = hash_password(req.new_password)
+    otp_record.is_used = True
+    db.commit()
+
+    return MessageResponse(
+        message="Password has been reset successfully. You can now sign in with your new password."
+    )
+
 

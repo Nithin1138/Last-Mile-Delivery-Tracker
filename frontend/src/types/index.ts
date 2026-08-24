@@ -200,3 +200,17 @@ export interface DashboardMetrics {
     created_at: string;
   }>;
 }
+
+export interface NotificationRecord {
+  id: string;
+  order_id?: string;
+  notification_type: string;
+  channel: 'EMAIL' | 'SMS';
+  subject?: string;
+  body: string;
+  status: 'SENT' | 'FAILED' | 'PENDING';
+  error_message?: string;
+  created_at: string;
+}
+
+

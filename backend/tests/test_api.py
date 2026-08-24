@@ -297,5 +297,80 @@ def test_concurrent_rate_card_versioning_preserves_single_active_invariant(clien
     assert active_cards[0].version == 2
 
 
+def test_forgot_password_and_reset_flow(client, db):
+    """Test full 6-digit OTP passcode generation, email dispatch, and password reset."""
+    from app.models.models import User, RoleEnum, PasswordResetOTP
+    from app.core.security import hash_password, verify_password
+
+    # Create user
+    user = User(
+        email="reset.user@lastmile.dev",
+        password_hash=hash_password("oldPassword123"),
+        name="Reset Test User",
+        role=RoleEnum.CUSTOMER,
+    )
+    db.add(user)
+    db.commit()
+
+    # 1. Request forgot password OTP
+    res_forgot = client.post(
+        "/api/auth/forgot-password",
+        json={"email": "RESET.USER@lastmile.dev"},  # test case insensitivity
+    )
+    assert res_forgot.status_code == 200
+    assert "passcode has been sent" in res_forgot.json()["message"]
+
+    # Verify OTP created in DB
+    otp_record = db.query(PasswordResetOTP).filter(
+        PasswordResetOTP.email == "reset.user@lastmile.dev",
+        PasswordResetOTP.is_used == False,
+    ).first()
+    assert otp_record is not None
+    assert len(otp_record.otp_code) == 6
+    assert otp_record.otp_code.isdigit()
+
+    # 2. Attempt reset with wrong OTP
+    res_bad = client.post(
+        "/api/auth/reset-password",
+        json={
+            "email": "reset.user@lastmile.dev",
+            "otp_code": "000000",
+            "new_password": "brandNewPassword123",
+        },
+    )
+    assert res_bad.status_code == 400
+
+    # 3. Successful reset with valid 6-digit OTP
+    res_good = client.post(
+        "/api/auth/reset-password",
+        json={
+            "email": "reset.user@lastmile.dev",
+            "otp_code": otp_record.otp_code,
+            "new_password": "brandNewPassword123",
+        },
+    )
+    assert res_good.status_code == 200
+    assert res_good.json()["status"] == "success"
+
+    # Verify OTP marked as used
+    db.refresh(otp_record)
+    assert otp_record.is_used is True
+
+    # Verify login with new password succeeds and old password fails
+    res_login_old = client.post(
+        "/api/auth/login",
+        json={"email": "reset.user@lastmile.dev", "password": "oldPassword123"},
+    )
+    assert res_login_old.status_code == 401
+
+    res_login_new = client.post(
+        "/api/auth/login",
+        json={"email": "reset.user@lastmile.dev", "password": "brandNewPassword123"},
+    )
+    assert res_login_new.status_code == 200
+    assert "access_token" in res_login_new.json()
+
+
+
 
 

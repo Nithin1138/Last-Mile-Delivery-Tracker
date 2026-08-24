@@ -540,4 +540,33 @@ def notify_order_rescheduled(db: Session, order, customer, new_date: str):
     )
 
 
+def build_password_reset_email(user_name: str, otp_code: str) -> str:
+    """Build a professional, clean, structured HTML email for password reset passcode."""
+    highlight_html = f"""
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f4fc; border: 1.5px dashed #3157A6; border-radius: 8px; margin: 16px 0;">
+      <tr>
+        <td style="padding: 18px 20px; text-align: center;">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #3157A6; margin-bottom: 6px;">Your 6-Digit Passcode</div>
+          <div style="font-size: 32px; font-weight: 800; letter-spacing: 8px; font-family: 'JetBrains Mono', Consolas, Monaco, monospace; color: #171A1F; margin: 4px 0;">{otp_code}</div>
+          <div style="font-size: 12px; color: #5F6672; margin-top: 4px;">● Valid for 15 minutes</div>
+        </td>
+      </tr>
+    </table>"""
+
+    rows = [
+        ("Action", "Password Reset Request"),
+        ("Validity Window", "15 Minutes"),
+        ("Security Notice", "Never share this passcode with anyone"),
+    ]
+
+    return _build_minimal_email(
+        short_id="SECURITY",
+        title="Password Reset Verification",
+        intro=f"Hello <strong>{user_name}</strong>,<br>You requested to reset your password for your <strong>LastMile Flow</strong> account. Enter the 6-digit passcode below to set your new password.",
+        rows=rows,
+        highlight_html=highlight_html,
+    )
+
+
+
 

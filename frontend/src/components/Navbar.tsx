@@ -34,7 +34,7 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
     if (savedCustomAccount && savedCustomAccount.user.role === 'CUSTOMER') {
       restoreCustomAccount();
     } else {
-      await quickLogin('rohit.verma@gmail.com', 'customer123');
+      await quickLogin('alekhya.reddy@gmail.com', 'customer123');
     }
     onSelectTab('dashboard');
   };
@@ -43,7 +43,7 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
     if (savedCustomAccount && savedCustomAccount.user.role === 'AGENT') {
       restoreCustomAccount();
     } else {
-      await quickLogin('vikram.singh@delivery.dev', 'agent123');
+      await quickLogin('babu.naidu@delivery.dev', 'agent123');
     }
     onSelectTab('dashboard');
   };
@@ -108,32 +108,32 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Admin
+              Admin (Veera Nithin)
             </button>
 
             <button
               onClick={handleCustomerSwitch}
               className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                user.role === 'CUSTOMER' && (isCustomUserActive || user.email.includes('rohit'))
+                user.role === 'CUSTOMER' && (isCustomUserActive || user.email.includes('alekhya') || user.email.includes('rohit'))
                   ? 'bg-[#3157A6] text-white font-semibold shadow-2xs dark:bg-[#6D8ED4] dark:text-[#111417]'
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Customer {savedCustomAccount?.user.role === 'CUSTOMER' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(B2C)'}
+              Customer {savedCustomAccount?.user.role === 'CUSTOMER' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(Alekhya B2C)'}
             </button>
 
             <button
               onClick={async () => {
-                await quickLogin('logistics@acmecorp.in', 'customer123');
+                await quickLogin('pujitha.logistics@andhraexports.in', 'customer123');
                 onSelectTab('dashboard');
               }}
               className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                user.role === 'CUSTOMER' && user.email.includes('acme')
+                user.role === 'CUSTOMER' && (user.email.includes('pujitha') || user.email.includes('acme') || user.email.includes('andhra'))
                   ? 'bg-[#3157A6] text-white font-semibold shadow-2xs dark:bg-[#6D8ED4] dark:text-[#111417]'
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Customer (B2B)
+              Customer (Pujitha B2B)
             </button>
 
             <button
@@ -144,7 +144,7 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
                   : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138]'
               }`}
             >
-              Agent {savedCustomAccount?.user.role === 'AGENT' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : ''}
+              Agent {savedCustomAccount?.user.role === 'AGENT' && isCustomUserActive ? `(${user.name.split(' ')[0]})` : '(Babu Naidu)'}
             </button>
           </div>
         </div>

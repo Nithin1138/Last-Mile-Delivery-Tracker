@@ -17,11 +17,13 @@ from app.core.errors import AppError, ErrorCodes
 from app.models.models import (
     User, Order, OrderStatusHistory, DeliveryAttempt, DeliveryAgent,
     AssignmentDecision, IdempotencyKey, OrderStatusEnum, RoleEnum, DeliveryAttemptStatusEnum,
+    Notification,
 )
 from app.schemas.orders import (
     OrderCreateRequest, OrderResponse, OrderListResponse,
     StatusUpdateRequest, AssignRequest, RescheduleRequest,
     TimelineEntry, DeliveryAttemptResponse, AssignmentDecisionResponse,
+    NotificationResponse,
 )
 from app.schemas.pricing import PriceQuoteRequest, PriceBreakdownResponse
 from app.services.zone_service import resolve_pincode_to_zone
@@ -378,8 +380,16 @@ def list_orders(
         query = query.filter(
             (Order.pickup_zone_id == parsed_zone) | (Order.drop_zone_id == parsed_zone)
         )
-    if agent_id:
-        query = query.filter(Order.agent_id == _parse_uuid(agent_id, "agent ID"))
+    if agent_id and current_user.role == RoleEnum.ADMIN:
+        parsed_agent_id = _parse_uuid(agent_id, "agent ID")
+        # Support filtering by either DeliveryAgent.id or DeliveryAgent.user_id
+        agent_record = db.query(DeliveryAgent).filter(
+            (DeliveryAgent.id == parsed_agent_id) | (DeliveryAgent.user_id == parsed_agent_id)
+        ).first()
+        if agent_record:
+            query = query.filter(Order.agent_id == agent_record.id)
+        else:
+            query = query.filter(Order.agent_id == parsed_agent_id)
     if customer_id and current_user.role == RoleEnum.ADMIN:
         query = query.filter(Order.customer_id == _parse_uuid(customer_id, "customer ID"))
     if search:
@@ -841,3 +851,45 @@ def get_assignment_decisions(
         ))
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Order Notifications Audit Trail (SMS & Email)
+# ---------------------------------------------------------------------------
+@router.get("/{order_id}/notifications", response_model=list[NotificationResponse])
+def get_order_notifications(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all dispatched SMS and email notifications for an order with RBAC."""
+    parsed_id = _parse_uuid(order_id, "order ID")
+    order = db.query(Order).filter(Order.id == parsed_id).first()
+    if not order:
+        raise AppError(code=ErrorCodes.ORDER_NOT_FOUND, message="Order not found.", status_code=404)
+
+    # Centralized authorization enforcement
+    verify_order_access(current_user, order, db)
+
+    notifications = (
+        db.query(Notification)
+        .filter(Notification.order_id == parsed_id)
+        .order_by(desc(Notification.created_at))
+        .all()
+    )
+
+    return [
+        NotificationResponse(
+            id=str(n.id),
+            order_id=str(n.order_id) if n.order_id else None,
+            notification_type=n.notification_type,
+            channel=n.channel,
+            subject=n.subject,
+            body=n.body,
+            status=n.status.value if hasattr(n.status, 'value') else n.status,
+            error_message=n.error_message,
+            created_at=n.created_at.isoformat(),
+        )
+        for n in notifications
+    ]
+

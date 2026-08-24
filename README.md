@@ -24,12 +24,12 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 ### Complete End-to-End Walkthrough
 
 ```text
-1. Customer Login (Email: rohit.verma@gmail.com / Pass: customer123)
+1. Customer Login (Email: alekhya.reddy@gmail.com / Pass: customer123)
    ├── Create a new order with dimensions: 50 × 40 × 30 cm, Actual Weight: 8 kg, Payment: COD
    ├── Observe Dynamic Price Preview:
    │   ├── Volumetric Weight = (50×40×30)/5000 = 12.00 kg (Volumetric wins over 8 kg)
    │   ├── Chargeable Weight = 12.00 kg
-   │   ├── Route: Delhi (North Zone) → Mumbai (South Zone) = INTER Zone
+   │   ├── Route: Hyderabad (North Zone) → Vijayawada (South Zone) = INTER Zone
    │   ├── Base Charge = ₹50 + (₹20 × 12) = ₹290.00
    │   ├── COD Surcharge = ₹25 + (2.5% × ₹290) = ₹32.25
    │   └── Total Payable = ₹322.25
@@ -38,17 +38,17 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 2. Admin Login (Email: admin@lastmile.dev / Pass: admin123)
    ├── Navigate to "Orders" tab → Locate the newly created order (Status: CREATED)
    ├── Click "Auto-Assign"
-   └── View assignment audit decision: Inspect evaluated candidates, Haversine proximity distance, and assigned agent
+   └── View assignment audit decision: Inspect evaluated candidates, Haversine proximity distance, and assigned agent (Babu Naidu)
 
-3. Agent Login (Email: vikram.singh@delivery.dev / Pass: agent123)
+3. Agent Login (Email: babu.naidu@delivery.dev / Pass: agent123)
    ├── Navigate to "Assigned Deliveries"
    ├── Step order through state machine: Picked Up ➔ In Transit ➔ Out for Delivery
    └── Click "Mark Delivery Failed" → Select reason: "Customer unreachable after 3 attempts"
 
-4. Customer Login (Email: rohit.verma@gmail.com / Pass: customer123)
+4. Customer Login (Email: alekhya.reddy@gmail.com / Pass: customer123)
    ├── Open the order details → Notice Delivery Attempt #1 recorded as FAILED
    ├── Click "Reschedule Delivery" → Select new delivery date
-   └── Atomic Execution: System transitions order FAILED ➔ RESCHEDULED ➔ ASSIGNED, releases Agent #1, auto-dispatches the nearest available Agent #2, creates Delivery Attempt #2, and triggers customer notifications!
+   └── Atomic Execution: System transitions order FAILED ➔ RESCHEDULED ➔ ASSIGNED, releases Agent #1, auto-dispatches the nearest available Agent #2 (Srinivas Rao), creates Delivery Attempt #2, and triggers customer notifications!
 
 5. Agent Login (Assigned Agent)
    ├── Mark "Delivered" with proof/notes
@@ -59,15 +59,15 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 
 ## 🔑 Demo Accounts (Pre-Seeded)
 
-| Role | Email | Password | Description |
-|---|---|---|---|
-| **Admin** | `admin@lastmile.dev` | `admin123` | Full administrative control, fleet dispatch, rate cards, zones |
-| **Customer (B2C)** | `rohit.verma@gmail.com` | `customer123` | Retail customer placing orders and tracking deliveries |
-| **Customer (B2B)** | `logistics@acmecorp.in` | `customer123` | Merchant shipper placing bulk commercial orders |
-| **Agent 1** | `vikram.singh@delivery.dev` | `agent123` | Delhi NCR Agent (Connaught Place, Available) |
-| **Agent 2** | `rahul.sharma@delivery.dev` | `agent123` | Delhi NCR Agent (Saket, Busy with load) |
-| **Agent 3** | `amit.kumar@delivery.dev` | `agent123` | Mumbai Metro Agent (Fort, Available) |
-| **Agent 4** | `priya.patel@delivery.dev` | `agent123` | Mumbai Metro Agent (BKC, Offline) |
+| Role | Persona Name | Email | Password | Description |
+|---|---|---|---|---|
+| **Admin** | Veera Nithin | `admin@lastmile.dev` | `admin123` | Full administrative control, fleet dispatch, rate cards, zones |
+| **Customer (B2C)** | Alekhya Reddy | `alekhya.reddy@gmail.com` | `customer123` | Retail customer placing orders and tracking deliveries |
+| **Customer (B2B)** | Pujitha Rao | `pujitha.logistics@andhraexports.in` | `customer123` | Enterprise shipper placing bulk commercial orders |
+| **Agent 1** | Babu Naidu | `babu.naidu@delivery.dev` | `agent123` | Hyderabad / Cyberabad Agent (Madhapur, Available) |
+| **Agent 2** | Srinivas Rao | `srinivas.rao@delivery.dev` | `agent123` | Hyderabad Hub Agent (Banjara Hills, Busy with load) |
+| **Agent 3** | Kalyan Varma | `kalyan.varma@delivery.dev` | `agent123` | Vijayawada Metro Agent (Benz Circle, Available) |
+| **Agent 4** | Ananya Chowdary | `ananya.chowdary@delivery.dev` | `agent123` | Visakhapatnam Hub Agent (MVP Colony, Offline) |
 
 ---
 

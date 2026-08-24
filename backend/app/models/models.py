@@ -577,3 +577,18 @@ class IdempotencyKey(Base):
     response_status = Column(Integer, nullable=False)
     response_body = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# Password Reset OTPs (6-digit email passcode verification)
+# ---------------------------------------------------------------------------
+class PasswordResetOTP(Base):
+    __tablename__ = "password_reset_otps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    email = Column(String(255), nullable=False, index=True)
+    otp_code = Column(String(6), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_used = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
