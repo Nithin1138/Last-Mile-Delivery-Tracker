@@ -242,6 +242,10 @@ export const agentSelfApi = {
     const res = await apiClient.get('/agents/me');
     return res.data;
   },
+  listZones: async (): Promise<Zone[]> => {
+    const res = await apiClient.get<Zone[]>('/agents/zones');
+    return res.data;
+  },
   updateSelf: async (payload: { availability_status?: string; latitude?: number; longitude?: number; zone_id?: string }) => {
     const res = await apiClient.put('/agents/me', payload);
     return res.data;

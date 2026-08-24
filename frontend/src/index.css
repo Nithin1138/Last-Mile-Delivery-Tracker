@@ -1,80 +1,140 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Light Theme (Slate + Indigo) */
+    --bg-app: #F7F8FA;
+    --surface-card: #FFFFFF;
+    --surface-subtle: #F1F3F5;
+    --border-color: #E2E5E9;
+    --primary-action: #3157A6;
+    --primary-hover: #284A91;
+    --text-main: #171A1F;
+    --text-sec: #5F6672;
+    --text-muted: #8A919C;
+    --semantic-success: #287A55;
+    --semantic-warning: #A66A16;
+    --semantic-danger: #B54848;
+    --semantic-info: #426B9E;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+
+    /* Dark Theme (Slate + Indigo) */
+    --bg-app: #111417;
+    --surface-card: #181C20;
+    --surface-subtle: #1E2328;
+    --border-color: #2B3138;
+    --primary-action: #6D8ED4;
+    --primary-hover: #819DDE;
+    --text-main: #E8EAED;
+    --text-sec: #A7ADB5;
+    --text-muted: #737A84;
+    --semantic-success: #55A878;
+    --semantic-warning: #D19A4A;
+    --semantic-danger: #D56B6B;
+    --semantic-info: #7095C4;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
   }
 
   body {
-    @apply bg-slate-950 text-slate-100 min-h-screen font-sans antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: var(--font-sans);
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "tnum";
+    letter-spacing: -0.012em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     overflow-x: hidden;
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
-  /* Prevent layout shifts and add smooth press feedback */
+  code, kbd, samp, pre, .font-mono {
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+    font-feature-settings: "tnum", "zero";
+  }
+
   button, a, [role="button"], input, select, textarea {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    transition: all 180ms var(--ease-spring);
   }
 
-  button:active, [role="button"]:active {
-    transform: scale(0.975);
+  button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+    transform: scale(0.985);
   }
 }
 
 /* ─────────────────────────────────────────────────────────
-   Ultra-Sleek Custom Scrollbars
+   Scrollbars (Light & Dark Support)
 ───────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { 
-  background: rgba(51, 65, 85, 0.6); 
+  background: rgba(138, 145, 156, 0.35); 
   border-radius: 9999px; 
   transition: background 150ms ease;
 }
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(115, 122, 132, 0.35);
+}
 ::-webkit-scrollbar-thumb:hover { 
-  background: rgba(99, 102, 241, 0.5); 
+  background: var(--primary-action); 
 }
 
-/* Custom scrollbar for modals and sidebars */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(51, 65, 85, 0.6) transparent;
+  scrollbar-color: rgba(138, 145, 156, 0.35) transparent;
+}
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(115, 122, 132, 0.35) transparent;
 }
 
 /* ─────────────────────────────────────────────────────────
-   Modern Keyframe Animations
+   Keyframe Animations & Micro-Interactions
 ───────────────────────────────────────────────────────── */
-
-/* Smooth page entrance with subtle spring */
 @keyframes page-enter-anim {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.995);
+    transform: translateY(8px) scale(0.996);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: none;
+    transform: translateY(0) scale(1);
   }
 }
 
 .page-enter {
-  animation: page-enter-anim 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: page-enter-anim 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: opacity, transform;
 }
 
-/* Modal and dialog spring reveal */
 @keyframes modal-pop {
   0% {
     opacity: 0;
-    transform: scale(0.95) translateY(6px);
+    transform: scale(0.98) translateY(6px);
   }
   100% {
     opacity: 1;
@@ -86,21 +146,10 @@
   animation: modal-pop 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Backdrop smooth fade */
-@keyframes backdrop-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.backdrop-animate {
-  animation: backdrop-fade 180ms ease-out forwards;
-}
-
-/* Card staggered entrance */
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -109,78 +158,157 @@
 }
 
 .card-enter {
-  animation: card-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: card-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Toast entrance and glide */
-@keyframes toast-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-12px) scale(0.96);
-  }
-  70% {
-    transform: translateY(2px) scale(1.01);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
 }
 
-.toast-animate {
-  animation: toast-in 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Pulsing live badge glow */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(52, 211, 153, 0);
-  }
-}
-
-.pulse-active-glow {
-  animation: pulse-glow 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+.pulse-live {
+  animation: pulse-subtle 2s infinite ease-in-out;
 }
 
 /* ─────────────────────────────────────────────────────────
-   Interactive Card & Button Enhancements
+   Palette Surface Primitives (#F7F8FA / #FFFFFF and #111417 / #181C20)
 ───────────────────────────────────────────────────────── */
-.card-hover-glow {
-  transition: transform 220ms var(--ease-spring), border-color 220ms ease, box-shadow 220ms ease;
+.stripe-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E5E9;
+  box-shadow: 0 1px 3px 0 rgba(23, 26, 31, 0.04), 0 1px 2px -1px rgba(23, 26, 31, 0.02);
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.card-hover-glow:hover {
-  transform: translateY(-2.5px);
-  border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6), 0 0 18px -4px rgba(99, 102, 241, 0.15);
+.dark .stripe-card {
+  background-color: #181C20;
+  border-color: #2B3138;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.35);
+}
+
+.stripe-card-interactive {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E5E9;
+  box-shadow: 0 1px 3px 0 rgba(23, 26, 31, 0.04);
+  transition: transform 150ms var(--ease-spring), background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.dark .stripe-card-interactive {
+  background-color: #181C20;
+  border-color: #2B3138;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.35);
+}
+
+.stripe-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: #3157A6;
+  box-shadow: 0 10px 24px -4px rgba(49, 87, 166, 0.12), 0 2px 6px -1px rgba(23, 26, 31, 0.04);
+}
+
+.dark .stripe-card-interactive:hover {
+  border-color: #6D8ED4;
+  box-shadow: 0 10px 24px -4px rgba(109, 142, 212, 0.22), 0 4px 8px -2px rgba(0, 0, 0, 0.45);
 }
 
 .card-hover-subtle {
-  transition: transform 200ms var(--ease-spring), border-color 200ms ease, background-color 200ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
 .card-hover-subtle:hover {
-  transform: translateY(-1.5px);
-  border-color: rgba(148, 163, 184, 0.3);
-  background-color: rgba(30, 41, 59, 0.95);
+  background-color: #F1F3F5;
+  border-color: #D3D7DD;
 }
 
-/* Smooth gradient button glow on hover */
-.btn-gradient {
-  background-size: 200% auto;
-  transition: all 250ms var(--ease-spring);
+.dark .card-hover-subtle:hover {
+  background-color: #1E2328;
+  border-color: #3B434C;
 }
 
-.btn-gradient:hover {
-  background-position: right center;
-  box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.35);
+/* Linear-style input */
+.linear-input {
+  background-color: #FFFFFF;
+  border: 1px solid #D3D7DD;
+  color: #171A1F;
+  box-shadow: 0 1px 2px 0 rgba(23, 26, 31, 0.03);
+  transition: all 120ms ease;
+}
+
+.dark .linear-input {
+  background-color: #111417;
+  border-color: #2B3138;
+  color: #E8EAED;
+}
+
+.linear-input:focus {
+  border-color: #3157A6;
+  box-shadow: 0 0 0 3px rgba(49, 87, 166, 0.15);
+  outline: none;
+}
+
+.dark .linear-input:focus {
+  border-color: #6D8ED4;
+  box-shadow: 0 0 0 3px rgba(109, 142, 212, 0.25);
+}
+
+/* Primary Action Buttons (#3157A6 -> #284A91 and #6D8ED4 -> #819DDE) */
+.stripe-btn-primary {
+  background-color: #3157A6;
+  border: 1px solid #284A91;
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  transition: all 120ms var(--ease-spring);
+}
+
+.stripe-btn-primary:hover:not(:disabled) {
+  background-color: #284A91;
+  border-color: #203B75;
+  box-shadow: 0 4px 12px -2px rgba(49, 87, 166, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
 }
 
-/* Shimmer skeleton for loading states */
+.dark .stripe-btn-primary {
+  background-color: #6D8ED4;
+  border-color: #5578C0;
+  color: #111417;
+  font-weight: 700;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+
+.dark .stripe-btn-primary:hover:not(:disabled) {
+  background-color: #819DDE;
+  border-color: #6D8ED4;
+  box-shadow: 0 4px 14px -2px rgba(109, 142, 212, 0.45);
+}
+
+/* Success Button (#287A55 / #55A878) */
+.stripe-btn-success {
+  background-color: #287A55;
+  border: 1px solid #206345;
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  transition: all 120ms var(--ease-spring);
+}
+
+.stripe-btn-success:hover:not(:disabled) {
+  background-color: #206345;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(40, 122, 85, 0.35);
+}
+
+.dark .stripe-btn-success {
+  background-color: #55A878;
+  border-color: #429062;
+  color: #111417;
+  font-weight: 700;
+}
+
+.dark .stripe-btn-success:hover:not(:disabled) {
+  background-color: #66BA89;
+}
+
+/* Shimmer skeleton */
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -189,16 +317,26 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    #0f172a 25%,
-    #1e293b 50%,
-    #0f172a 75%
+    #F1F3F5 25%,
+    #E2E5E9 50%,
+    #F1F3F5 75%
   );
   background-size: 200% auto;
-  animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 8px;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
 }
 
-/* Prefers reduced motion — disable animations for accessibility */
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    #181C20 25%,
+    #1E2328 50%,
+    #181C20 75%
+  );
+  background-size: 200% auto;
+}
+
+/* Prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -206,3 +344,36 @@
     transform: none !important;
   }
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera / Firefox / IE and Edge */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Circular View Transition for Theme Switch */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+.dark::view-transition-old(root) {
+  z-index: 9999;
+}
+
+.dark::view-transition-new(root) {
+  z-index: 1;
+}
+

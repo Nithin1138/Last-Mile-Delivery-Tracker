@@ -1,7 +1,7 @@
 import React from 'react';
 import { TimelineEntry } from '../types';
 import { StatusBadge } from './StatusBadge';
-import { Clock, User, CheckCircle2, ShieldAlert, Truck, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, ShieldCheck, User, Sparkles } from 'lucide-react';
 
 interface Props {
   entries: TimelineEntry[];
@@ -10,73 +10,70 @@ interface Props {
 export const OrderTimeline: React.FC<Props> = ({ entries }) => {
   if (!entries || entries.length === 0) {
     return (
-      <div className="text-xs text-slate-400 p-6 bg-slate-950/60 rounded-2xl border border-slate-800 text-center">
-        No tracking events recorded yet.
+      <div className="p-4 rounded-xl bg-[#F1F3F5] dark:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] text-xs text-[#5F6672] dark:text-[#A7ADB5]">
+        No state transition records yet.
       </div>
     );
   }
 
   return (
-    <div className="relative pl-7 space-y-6 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-slate-700 before:to-slate-800">
-      {entries.map((entry, idx) => {
+    <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E2E5E9] dark:before:bg-[#2B3138]">
+      {entries.map((event, idx) => {
         const isLatest = idx === entries.length - 1;
-        const date = new Date(entry.created_at);
-        const formattedDate = date.toLocaleString('en-IN', {
+        const formattedDate = new Date(event.created_at).toLocaleString('en-IN', {
           dateStyle: 'medium',
-          timeStyle: 'short',
+          timeStyle: 'medium',
         });
 
         return (
-          <div key={entry.id} className="relative group animate-in fade-in slide-in-from-left-2 duration-200">
-            {/* Timeline Indicator Dot */}
-            <div
-              className={`absolute -left-7 top-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                isLatest
-                  ? 'bg-indigo-600 border-indigo-400 shadow-md shadow-indigo-500/30 ring-4 ring-indigo-500/20 scale-110'
-                  : 'bg-slate-900 border-slate-700 group-hover:border-slate-500'
-              }`}
-            >
+          <div key={event.id} className="relative group">
+            {/* Timeline Node Icon */}
+            <div className="absolute -left-6 top-1">
               {isLatest ? (
-                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <div className="w-5 h-5 rounded-full bg-[#EBF1FA] dark:bg-[#182232] border-2 border-[#3157A6] dark:border-[#6D8ED4] flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-[#3157A6] dark:bg-[#6D8ED4] animate-ping" />
+                </div>
               ) : (
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <div className="w-5 h-5 rounded-full bg-white dark:bg-[#181C20] border-2 border-[#E2E5E9] dark:border-[#2B3138] flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#8A919C] dark:text-[#737A84]" />
+                </div>
               )}
             </div>
 
-            {/* Timeline Event Card */}
-            <div className={`border rounded-2xl p-4 shadow-lg space-y-2.5 transition-all ${
+            {/* Event Card */}
+            <div className={`p-3.5 rounded-xl border transition-colors ${
               isLatest 
-                ? 'bg-slate-900/95 border-indigo-500/40 shadow-indigo-950/20' 
-                : 'bg-slate-900/70 border-slate-800/80 card-hover-subtle'
+                ? 'bg-[#EBF1FA]/40 dark:bg-[#182232]/40 border-[#D0DEF2] dark:border-[#25354E]' 
+                : 'bg-white dark:bg-[#181C20] border-[#E2E5E9] dark:border-[#2B3138]'
             }`}>
-              <div className="flex flex-wrap items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <StatusBadge status={entry.new_status} size="sm" showPulse={isLatest} />
-                  {entry.previous_status && (
-                    <span className="text-[11px] text-slate-400">
-                      (from <span className="font-mono text-slate-300 font-medium">{entry.previous_status}</span>)
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={event.new_status} size="sm" />
+                  {event.previous_status && (
+                    <span className="text-[10px] text-[#8A919C] dark:text-[#737A84]">
+                      (from {event.previous_status})
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{formattedDate}</span>
-                </div>
+                <span className="text-[10px] text-[#8A919C] dark:text-[#737A84] font-mono">
+                  {formattedDate}
+                </span>
               </div>
 
-              {entry.reason && (
-                <div className="text-xs text-slate-300 bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
-                  <span className="text-slate-500 font-medium">Audit Note: </span>
-                  {entry.reason}
-                </div>
+              {event.reason && (
+                <p className="text-xs text-[#171A1F] dark:text-[#E8EAED] mt-2 font-medium bg-[#F1F3F5] dark:bg-[#1E2328] p-2 rounded-lg border border-[#E2E5E9] dark:border-[#2B3138]">
+                  "{event.reason}"
+                </p>
               )}
 
-              {entry.actor_name && (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-1">
-                  <User className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Recorded by: <strong className="text-slate-200 font-semibold">{entry.actor_name}</strong></span>
-                </div>
-              )}
+              <div className="flex items-center gap-3 mt-2 text-[10px] text-[#5F6672] dark:text-[#A7ADB5]">
+                {event.actor_name && (
+                  <span className="flex items-center gap-1">
+                    <User className="w-3 h-3 text-[#8A919C] dark:text-[#737A84]" />
+                    <strong className="text-[#171A1F] dark:text-[#E8EAED]">{event.actor_name}</strong>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         );

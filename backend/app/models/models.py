@@ -446,17 +446,36 @@ def _prevent_delivery_attempt_delete(mapper, connection, target):
 
 
 @event.listens_for(DeliveryAttempt, "before_update")
-def _prevent_terminal_delivery_attempt_update(mapper, connection, target):
+def _enforce_delivery_attempt_lifecycle_and_immutability(mapper, connection, target):
     import sqlalchemy as sa
     if target.id:
-        db_status = connection.execute(
-            sa.select(DeliveryAttempt.status).where(DeliveryAttempt.id == target.id)
-        ).scalar()
-        if db_status in (DeliveryAttemptStatusEnum.DELIVERED, DeliveryAttemptStatusEnum.FAILED, "DELIVERED", "FAILED"):
-            val_str = db_status.value if hasattr(db_status, "value") else str(db_status).split(".")[-1]
-            raise ValueError(
-                f"DeliveryAttempt #{target.attempt_number} is in terminal status '{val_str}' and cannot be modified."
-            )
+        row = connection.execute(
+            sa.select(
+                DeliveryAttempt.status,
+                DeliveryAttempt.order_id,
+                DeliveryAttempt.attempt_number,
+            ).where(DeliveryAttempt.id == target.id)
+        ).first()
+        if row:
+            db_status, db_order_id, db_attempt_num = row
+            old_status_val = db_status.value if hasattr(db_status, "value") else str(db_status).split(".")[-1]
+            new_status_val = target.status.value if hasattr(target.status, "value") else str(target.status).split(".")[-1]
+
+            # 1. Block changes to identity fields
+            if str(target.order_id) != str(db_order_id) or target.attempt_number != db_attempt_num:
+                raise ValueError("DeliveryAttempt identity fields (order_id, attempt_number) are immutable.")
+
+            # 2. Block all updates if already terminal
+            if old_status_val in ("DELIVERED", "FAILED"):
+                raise ValueError(
+                    f"DeliveryAttempt #{target.attempt_number} is in terminal status '{old_status_val}' and cannot be modified."
+                )
+
+            # 3. Block illegal backward transitions (e.g. IN_PROGRESS -> PENDING)
+            if old_status_val == "IN_PROGRESS" and new_status_val == "PENDING":
+                raise ValueError(
+                    f"Illegal lifecycle transition: cannot transition DeliveryAttempt from '{old_status_val}' to '{new_status_val}'."
+                )
 
 
 

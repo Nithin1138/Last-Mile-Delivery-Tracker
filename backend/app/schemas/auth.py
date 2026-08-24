@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=128)
     name: str = Field(..., min_length=1, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
+    role: Optional[str] = Field(default="CUSTOMER", max_length=50)
 
 
 class LoginRequest(BaseModel):

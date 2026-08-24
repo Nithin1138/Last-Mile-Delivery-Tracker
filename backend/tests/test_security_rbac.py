@@ -41,6 +41,31 @@ def test_public_registration_cannot_create_admin_or_agent(client, db):
     assert user.role == RoleEnum.CUSTOMER
 
 
+def test_public_registration_can_create_agent(client, db):
+    """Registering with role=AGENT must successfully create an AGENT user and a DeliveryAgent profile."""
+    payload = {
+        "email": f"courier_{uuid4().hex[:6]}@delivery.dev",
+        "password": "agentpassword123",
+        "name": "Self Registered Courier",
+        "phone": "+919876543210",
+        "role": "AGENT",
+    }
+    res = client.post("/api/auth/register", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["user"]["role"] == "AGENT"
+    assert data["user"]["name"] == "Self Registered Courier"
+
+    # Verify in DB and ensure DeliveryAgent profile exists
+    user = db.query(User).filter(User.email == payload["email"]).first()
+    assert user is not None
+    assert user.role == RoleEnum.AGENT
+    assert user.agent_profile is not None
+    assert user.agent_profile.availability_status == AgentStatusEnum.AVAILABLE
+    assert user.agent_profile.max_capacity == 5
+
+
+
 def test_customer_cannot_update_order_status(client, db, customer_token):
     """Customers are strictly forbidden from calling POST /api/orders/{id}/status."""
     cust = User(email=f"owner_{uuid4().hex[:6]}@test.com", password_hash="pass", name="Order Owner", role=RoleEnum.CUSTOMER)
@@ -703,6 +728,110 @@ def test_pending_delivery_attempt_can_transition_to_terminal_then_locks(db):
         attempt.failure_reason = "Tampered reason"
         db.commit()
     db.rollback()
+
+
+def test_delivery_attempt_complete_lifecycle_and_immutability_matrix(db):
+    """
+    Comprehensive regression test matrix for DeliveryAttempt:
+    - valid PENDING -> IN_PROGRESS
+    - valid IN_PROGRESS -> FAILED
+    - valid IN_PROGRESS -> DELIVERED
+    - invalid terminal update (both DELIVERED and FAILED)
+    - invalid terminal delete
+    - invalid arbitrary active-attempt mutation (reverting IN_PROGRESS -> PENDING, mutating order_id / attempt_number)
+    """
+    from datetime import datetime, timezone
+    from app.models.models import DeliveryAttempt, Order, Zone, OrderTypeEnum, PaymentTypeEnum, DeliveryAttemptStatusEnum
+
+    zone = Zone(name="Lifecycle Matrix Zone")
+    user = User(email=f"lc_matrix_{uuid4().hex[:6]}@test.com", password_hash="pass", name="LC Matrix User", role=RoleEnum.CUSTOMER)
+    db.add_all([zone, user])
+    db.flush()
+
+    order = Order(
+        customer_id=user.id,
+        pickup_address="Origin", pickup_pincode="110001", pickup_zone_id=zone.id,
+        drop_address="Destination", drop_pincode="110001", drop_zone_id=zone.id,
+        length_cm=10, breadth_cm=10, height_cm=10,
+        actual_weight_kg=1, volumetric_weight_kg=0.2, chargeable_weight_kg=1,
+        base_charge=50, cod_charge=0, total_charge=50,
+        order_type=OrderTypeEnum.B2C, payment_type=PaymentTypeEnum.PREPAID,
+    )
+    db.add(order)
+    db.flush()
+
+    # Case 1: Valid PENDING -> IN_PROGRESS -> DELIVERED
+    att1 = DeliveryAttempt(
+        order_id=order.id,
+        attempt_number=1,
+        status=DeliveryAttemptStatusEnum.PENDING,
+    )
+    db.add(att1)
+    db.commit()
+
+    # PENDING -> IN_PROGRESS (valid)
+    att1.status = DeliveryAttemptStatusEnum.IN_PROGRESS
+    att1.started_at = datetime.now(timezone.utc)
+    db.commit()
+    assert att1.status == DeliveryAttemptStatusEnum.IN_PROGRESS
+
+    # IN_PROGRESS -> DELIVERED (valid)
+    att1.status = DeliveryAttemptStatusEnum.DELIVERED
+    att1.completed_at = datetime.now(timezone.utc)
+    db.commit()
+    assert att1.status == DeliveryAttemptStatusEnum.DELIVERED
+
+    # Terminal DELIVERED cannot be updated
+    with pytest.raises(ValueError, match="is in terminal status 'DELIVERED'"):
+        att1.failure_reason = "tamper"
+        db.commit()
+    db.rollback()
+
+    # Terminal DELIVERED cannot be deleted
+    with pytest.raises(ValueError, match="cannot be deleted"):
+        db.delete(att1)
+        db.commit()
+    db.rollback()
+
+    # Case 2: Valid PENDING -> IN_PROGRESS -> FAILED
+    att2 = DeliveryAttempt(
+        order_id=order.id,
+        attempt_number=2,
+        status=DeliveryAttemptStatusEnum.PENDING,
+    )
+    db.add(att2)
+    db.commit()
+
+    # PENDING -> IN_PROGRESS (valid)
+    att2.status = DeliveryAttemptStatusEnum.IN_PROGRESS
+    att2.started_at = datetime.now(timezone.utc)
+    db.commit()
+
+    # Invalid arbitrary active mutation: Reverting IN_PROGRESS -> PENDING is forbidden
+    with pytest.raises(ValueError, match="Illegal lifecycle transition"):
+        att2.status = DeliveryAttemptStatusEnum.PENDING
+        db.commit()
+    db.rollback()
+
+    # Invalid arbitrary active mutation: Altering attempt_number or order_id is forbidden
+    with pytest.raises(ValueError, match="identity fields.*are immutable"):
+        att2.attempt_number = 99
+        db.commit()
+    db.rollback()
+
+    # IN_PROGRESS -> FAILED (valid)
+    att2.status = DeliveryAttemptStatusEnum.FAILED
+    att2.failure_reason = "Customer not at home"
+    att2.completed_at = datetime.now(timezone.utc)
+    db.commit()
+    assert att2.status == DeliveryAttemptStatusEnum.FAILED
+
+    # Terminal FAILED cannot be updated
+    with pytest.raises(ValueError, match="is in terminal status 'FAILED'"):
+        att2.failure_reason = "changed after failure"
+        db.commit()
+    db.rollback()
+
 
 
 

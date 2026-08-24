@@ -1,18 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Order, TimelineEntry, DeliveryAttempt, AssignmentDecision } from '../types';
 import { ordersApi, extractErrorMessage } from '../api/client';
+import { Order, TimelineEntry, DeliveryAttempt, AssignmentDecision, OrderStatus } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { OrderTimeline } from '../components/OrderTimeline';
 import { DeliveryAttemptsList } from '../components/DeliveryAttemptsList';
 import { AssignmentAuditCard } from '../components/AssignmentAuditCard';
-import { X, Package, MapPin, Calendar, Clock, RotateCcw, Truck, Calculator } from 'lucide-react';
+import { 
+  Package, 
+  MapPin, 
+  CreditCard, 
+  Calendar, 
+  RotateCcw, 
+  AlertCircle, 
+  Clock, 
+  CheckCircle2, 
+  History, 
+  X, 
+  Truck,
+  Sparkles,
+  ExternalLink,
+  ShieldCheck,
+  User,
+  Phone,
+  Box,
+  Compass,
+  ArrowRight,
+  Check
+} from 'lucide-react';
 
 interface Props {
   orderId: string;
   onClose: () => void;
   onRefreshNeeded?: () => void;
 }
+
+// Visual 5-node stepper logic
+const getJourneyNodes = (status: OrderStatus) => {
+  const steps = [
+    { key: 'CREATED', label: 'Order Registered', desc: 'Order received & validated' },
+    { key: 'ASSIGNED', label: 'Carrier Assigned', desc: 'Matched with nearest courier' },
+    { key: 'IN_TRANSIT', label: 'In Transit to Hub', desc: 'Package in transport' },
+    { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', desc: 'Final-mile driver on route' },
+    { key: 'DELIVERED', label: 'Delivered', desc: 'Signed & fulfilled' },
+  ];
+
+  const statusIndexMap: Record<string, number> = {
+    CREATED: 0,
+    ASSIGNED: 1,
+    PICKED_UP: 2,
+    IN_TRANSIT: 2,
+    OUT_FOR_DELIVERY: 3,
+    DELIVERED: 4,
+    FAILED: 3,
+    RESCHEDULED: 1,
+    CANCELLED: -1,
+  };
+
+  const currentIndex = statusIndexMap[status] ?? 0;
+  return { steps, currentIndex, isFailed: status === 'FAILED' };
+};
 
 export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshNeeded }) => {
   const [order, setOrder] = useState<Order | null>(null);
@@ -22,291 +69,302 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Reschedule state
+  // Reschedule Form
   const [showReschedule, setShowReschedule] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [newDate, setNewDate] = useState('');
   const [rescheduleReason, setRescheduleReason] = useState('');
-  const [rescheduleLoading, setRescheduleLoading] = useState(false);
-  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
 
-  const fetchDetails = async (isBackground = false) => {
-    if (!isBackground) {
-      setLoading(true);
-      setError(null);
-    }
+  const fetchDetail = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const [orderRes, timelineRes, attemptsRes, assignmentsRes] = await Promise.all([
+      const [orderRes, timeRes, attRes, assignRes] = await Promise.all([
         ordersApi.getOrder(orderId),
         ordersApi.getTimeline(orderId),
         ordersApi.getAttempts(orderId),
         ordersApi.getAssignments(orderId),
       ]);
       setOrder(orderRes);
-      setTimeline(timelineRes);
-      setAttempts(attemptsRes);
-      setAssignments(assignmentsRes);
+      setTimeline(timeRes);
+      setAttempts(attRes);
+      setAssignments(assignRes);
     } catch (err: any) {
-      if (!isBackground) {
-        setError(extractErrorMessage(err));
-      }
+      setError(extractErrorMessage(err));
     } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDetails();
-    const interval = setInterval(() => {
-      fetchDetails(true);
-    }, 10000);
-    return () => clearInterval(interval);
+    fetchDetail();
   }, [orderId]);
 
-  const handleReschedule = async (e: React.FormEvent) => {
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rescheduleDate) return;
-    setRescheduleLoading(true);
-    setRescheduleError(null);
+    if (!newDate) return;
+
+    setRescheduling(true);
     try {
       await ordersApi.rescheduleOrder(orderId, {
-        new_scheduled_date: new Date(rescheduleDate).toISOString(),
-        reason: rescheduleReason || 'Customer requested reschedule',
+        new_scheduled_date: newDate,
+        reason: rescheduleReason || 'Customer requested date change',
       });
-
       setShowReschedule(false);
-      await fetchDetails();
+      await fetchDetail();
       if (onRefreshNeeded) onRefreshNeeded();
     } catch (err: any) {
-      setRescheduleError(extractErrorMessage(err));
+      alert(extractErrorMessage(err));
     } finally {
-      setRescheduleLoading(false);
+      setRescheduling(false);
     }
   };
 
-  if (typeof document === 'undefined') return null;
-
-  if (loading) {
-    return createPortal(
-      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-300 text-sm shadow-2xl flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <span>Loading order tracking & timeline...</span>
-        </div>
-      </div>,
-      document.body
-    );
-  }
-
-  if (error || !order) {
-    return createPortal(
-      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
-          <div className="text-rose-400 font-bold text-sm">Error loading order</div>
-          <div className="text-xs text-slate-400">{error || 'Order not found'}</div>
-          <button onClick={onClose} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold cursor-pointer">
-            Close
-          </button>
-        </div>
-      </div>,
-      document.body
-    );
-  }
+  if (typeof document !== 'undefined' && !orderId) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-800 max-w-4xl w-full rounded-2xl shadow-2xl overflow-hidden max-h-[88vh] flex flex-col my-auto animate-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in">
+      <div className="bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl modal-animate text-xs">
+        {/* Modal Header */}
+        <div className="p-4 sm:p-5 border-b border-[#E2E5E9] dark:border-[#2B3138] flex items-center justify-between gap-4 shrink-0 bg-[#F1F3F5]/50 dark:bg-[#1E2328]/50 rounded-t-2xl">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-950 border border-indigo-700/60 rounded-xl text-indigo-400">
+            <div className="p-2.5 rounded-xl bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-sm font-bold text-slate-100">#{order.id.slice(0, 8)}</span>
-                <StatusBadge status={order.status} size="sm" />
-                <span className="text-xs font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
-                  {order.order_type} / {order.payment_type}
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">
+                  Tracking #{orderId.slice(0, 8)}
                 </span>
+                {order && <StatusBadge status={order.status} size="sm" />}
               </div>
-              <div className="text-xs text-slate-400 mt-0.5">
-                Placed on {new Date(order.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-              </div>
+              <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-mono mt-0.5">
+                UUID: {orderId}
+              </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-            title="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {order && (order.status === 'FAILED' || order.status === 'RESCHEDULED') && (
+              <button
+                onClick={() => setShowReschedule(!showReschedule)}
+                className="stripe-btn-primary px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs cursor-pointer shadow-xs font-bold"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reschedule Delivery</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 text-[#8A919C] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
-
-          {/* Top Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Origin & Destination */}
-            <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl space-y-3 text-xs">
-              <div className="font-semibold text-slate-200 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-cyan-400" />
-                Route & Zones
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-slate-400 block font-medium">Pickup (Zone: {order.pickup_zone_name || 'N/A'}):</span>
-                  <span className="text-slate-200">{order.pickup_address}</span>
-                  <span className="text-slate-400 font-mono ml-1">({order.pickup_pincode})</span>
-                </div>
-                <div className="pt-2 border-t border-slate-700/50">
-                  <span className="text-slate-400 block font-medium">Drop (Zone: {order.drop_zone_name || 'N/A'}):</span>
-                  <span className="text-slate-200">{order.drop_address}</span>
-                  <span className="text-slate-400 font-mono ml-1">({order.drop_pincode})</span>
-                </div>
-              </div>
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+          {loading ? (
+            <div className="p-16 text-center text-[#8A919C] dark:text-[#737A84] flex flex-col items-center justify-center gap-3">
+              <div className="w-6 h-6 border-2 border-[#3157A6] dark:border-[#6D8ED4] border-t-transparent rounded-full animate-spin" />
+              <span className="font-mono text-xs">Loading complete audit history...</span>
             </div>
+          ) : error || !order ? (
+            <div className="p-6 bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] rounded-2xl text-[#B54848] dark:text-[#D56B6B]">
+              {error || 'Order details not found'}
+            </div>
+          ) : (
+            <>
+              {/* Visual 5-Stage Journey Stepper */}
+              {(() => {
+                const journey = getJourneyNodes(order.status);
+                return (
+                  <div className="bg-[#F1F3F5] dark:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-1.5">
+                        <Truck className="w-4 h-4 text-[#3157A6] dark:text-[#6D8ED4]" />
+                        Delivery Journey Progress
+                      </span>
+                      <span className="text-[11px] font-mono text-[#5F6672] dark:text-[#A7ADB5]">
+                        {order.status}
+                      </span>
+                    </div>
 
-            {/* Pricing Snapshot */}
-            <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl space-y-3 text-xs">
-              <div className="font-semibold text-slate-200 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Calculator className="w-4 h-4 text-emerald-400" />
-                  Frozen Pricing Snapshot
-                </span>
-                <span className="font-mono text-emerald-400 text-base font-black">₹{order.total_charge.toFixed(2)}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-[11px] bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/60">
-                <div>
-                  <span className="text-slate-400 block">Actual Wt</span>
-                  <strong className="text-slate-200 font-mono">{order.actual_weight_kg} kg</strong>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Volumetric</span>
-                  <strong className="text-amber-300 font-mono">{order.volumetric_weight_kg} kg</strong>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Chargeable</span>
-                  <strong className="text-indigo-300 font-mono">{order.chargeable_weight_kg} kg</strong>
-                </div>
-              </div>
-              <div className="space-y-1 text-[11px] text-slate-300">
-                <div className="flex justify-between">
-                  <span>Base Weight Charge:</span>
-                  <span className="font-mono">₹{order.base_charge.toFixed(2)}</span>
-                </div>
-                {order.cod_charge > 0 && (
-                  <div className="flex justify-between text-amber-300">
-                    <span>COD Surcharge:</span>
-                    <span className="font-mono">+₹{order.cod_charge.toFixed(2)}</span>
+                    <div className="grid grid-cols-5 gap-2 relative">
+                      {journey.steps.map((s, idx) => {
+                        const isPast = idx < journey.currentIndex;
+                        const isCurrent = idx === journey.currentIndex;
+                        const isPending = idx > journey.currentIndex;
+
+                        return (
+                          <div key={s.key} className="text-center space-y-1.5 relative">
+                            {/* Circle Indicator */}
+                            <div className="flex justify-center">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                isPast
+                                  ? 'bg-[#287A55] dark:bg-[#55A878] text-white'
+                                  : isCurrent
+                                  ? journey.isFailed
+                                    ? 'bg-[#B54848] dark:bg-[#D56B6B] text-white animate-pulse'
+                                    : 'bg-[#3157A6] dark:bg-[#6D8ED4] text-white dark:text-[#111417] ring-4 ring-[#3157A6]/20'
+                                  : 'bg-white dark:bg-[#181C20] text-[#8A919C] dark:text-[#737A84] border border-[#E2E5E9] dark:border-[#2B3138]'
+                              }`}>
+                                {isPast ? <Check className="w-3.5 h-3.5" /> : idx + 1}
+                              </div>
+                            </div>
+
+                            <div className="text-[11px] font-bold text-[#171A1F] dark:text-[#E8EAED] leading-tight">
+                              {s.label}
+                            </div>
+                            <div className="text-[9px] text-[#5F6672] dark:text-[#A7ADB5] hidden sm:block">
+                              {s.desc}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
+                );
+              })()}
 
-          {/* Reschedule banner for FAILED orders */}
-          {order.status === 'FAILED' && (
-            <div className="bg-rose-950/30 border border-rose-700/50 p-4 rounded-xl flex items-center justify-between">
-              <div>
-                <strong className="text-sm text-rose-300 block">Delivery Attempt Failed</strong>
-                <p className="text-xs text-rose-400 mt-0.5">
-                  You can reschedule this order for a new delivery date.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowReschedule(true)}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reschedule Delivery
-              </button>
-            </div>
-          )}
-
-          {/* Reschedule Modal/Form */}
-          {showReschedule && (
-            <form onSubmit={handleReschedule} className="bg-slate-950 border border-indigo-700/60 p-4 rounded-xl space-y-3 text-xs">
-              <div className="font-semibold text-indigo-300 flex items-center gap-1.5">
-                <RotateCcw className="w-4 h-4" />
-                Select New Delivery Date
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1">New Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={rescheduleDate}
-                    onChange={(e) => setRescheduleDate(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">Reason / Instructions</label>
-                  <input
-                    type="text"
-                    value={rescheduleReason}
-                    onChange={(e) => setRescheduleReason(e.target.value)}
-                    placeholder="e.g. Call before arrival"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100"
-                  />
-                </div>
-              </div>
-              {rescheduleError && (
-                <div className="text-rose-400 text-xs">{rescheduleError}</div>
+              {/* Reschedule Dropdown Form */}
+              {showReschedule && (
+                <form
+                  onSubmit={handleRescheduleSubmit}
+                  className="p-4 bg-[#FAF3E8] dark:bg-[#292014] border border-[#F2DEBF] dark:border-[#42321D] rounded-2xl space-y-3 animate-in fade-in"
+                >
+                  <div className="font-bold text-[#A66A16] dark:text-[#D19A4A] flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Reschedule Delivery Date
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">New Delivery Date</label>
+                      <input
+                        type="date"
+                        required
+                        value={newDate}
+                        onChange={(e) => setNewDate(e.target.value)}
+                        className="w-full linear-input rounded-lg p-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">Reason for Reschedule</label>
+                      <input
+                        type="text"
+                        value={rescheduleReason}
+                        onChange={(e) => setRescheduleReason(e.target.value)}
+                        placeholder="e.g., Customer requested next-day afternoon"
+                        className="w-full linear-input rounded-lg p-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowReschedule(false)}
+                      className="px-3 py-1.5 bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] text-[#5F6672] dark:text-[#A7ADB5] rounded-lg border border-[#E2E5E9] dark:border-[#2B3138] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={rescheduling}
+                      className="stripe-btn-primary px-4 py-1.5 rounded-lg cursor-pointer disabled:opacity-50 font-bold"
+                    >
+                      {rescheduling ? 'Updating...' : 'Confirm Reschedule'}
+                    </button>
+                  </div>
+                </form>
               )}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowReschedule(false)}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={rescheduleLoading || !rescheduleDate}
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg disabled:opacity-50"
-                >
-                  {rescheduleLoading ? 'Submitting...' : 'Confirm Reschedule'}
-                </button>
+
+              {/* Route & Billing Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Origin & Destination */}
+                <div className="stripe-card rounded-2xl p-4 space-y-3">
+                  <div className="text-xs font-bold text-[#171A1F] dark:text-[#E8EAED] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#E2E5E9] dark:border-[#2B3138] pb-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#3157A6] dark:text-[#6D8ED4]" />
+                    Routing & Territory
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs">
+                      <span className="text-[10px] uppercase font-bold text-[#8A919C] dark:text-[#737A84] block">Origin (Pickup)</span>
+                      <div className="text-[#171A1F] dark:text-[#E8EAED] font-medium">{order.pickup_address}</div>
+                      <div className="text-[#5F6672] dark:text-[#A7ADB5] font-mono text-[11px]">PIN: {order.pickup_pincode} ({order.pickup_zone_name || 'Zone'})</div>
+                    </div>
+                    <div className="text-xs pt-1.5 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+                      <span className="text-[10px] uppercase font-bold text-[#8A919C] dark:text-[#737A84] block">Destination (Drop)</span>
+                      <div className="text-[#171A1F] dark:text-[#E8EAED] font-semibold">{order.drop_address}</div>
+                      <div className="text-[#5F6672] dark:text-[#A7ADB5] font-mono text-[11px]">PIN: {order.drop_pincode} ({order.drop_zone_name || 'Zone'})</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing & Package Snapshot */}
+                <div className="stripe-card rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-[#171A1F] dark:text-[#E8EAED] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#E2E5E9] dark:border-[#2B3138] pb-2">
+                      <CreditCard className="w-3.5 h-3.5 text-[#287A55] dark:text-[#55A878]" />
+                      Billing & Package Spec
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 font-mono text-xs">
+                      <div className="bg-[#F1F3F5] dark:bg-[#1E2328] p-2 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
+                        <span className="text-[#8A919C] dark:text-[#737A84] text-[9px] uppercase font-sans font-semibold block">Dimensions</span>
+                        <span className="text-[#171A1F] dark:text-[#E8EAED]">{order.length_cm}×{order.breadth_cm}×{order.height_cm} cm</span>
+                      </div>
+                      <div className="bg-[#F1F3F5] dark:bg-[#1E2328] p-2 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
+                        <span className="text-[#8A919C] dark:text-[#737A84] text-[9px] uppercase font-sans font-semibold block">Actual / Vol Wt</span>
+                        <span className="text-[#171A1F] dark:text-[#E8EAED]">{order.actual_weight_kg} / {order.volumetric_weight_kg.toFixed(2)} kg</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#171A1F] dark:bg-[#111417] text-white p-3 rounded-xl flex items-center justify-between border border-[#2B3138]">
+                    <div>
+                      <span className="text-[10px] text-[#8A919C] uppercase font-bold block">{order.order_type} · {order.payment_type}</span>
+                      <span className="text-[10px] text-[#8A919C]">Chargeable Wt: {order.chargeable_weight_kg} kg</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-mono font-black text-[#55A878]">₹{order.total_charge.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </form>
+
+              {/* Auto-Assignment Decision Engine Audit */}
+              {assignments.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+                    Automated Assignment Decision Engine Audit
+                  </h3>
+                  <AssignmentAuditCard decisions={assignments} />
+                </div>
+              )}
+
+              {/* Delivery Attempt History */}
+              {attempts.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+                    Delivery Attempt History ({attempts.length})
+                  </h3>
+                  <DeliveryAttemptsList attempts={attempts} />
+                </div>
+              )}
+
+              {/* Immutable Timeline */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-[#3157A6] dark:text-[#6D8ED4]" />
+                  Lifecycle State Audit Trail ({timeline.length} Events)
+                </h3>
+                <OrderTimeline entries={timeline} />
+              </div>
+            </>
           )}
-
-          {/* Delivery Attempts (First-Class Entity) */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-purple-400" />
-              Delivery Attempts ({attempts.length})
-            </h3>
-            <DeliveryAttemptsList attempts={attempts} />
-          </div>
-
-          {/* Assignment Decision Audit */}
-          {assignments.length > 0 && (
-            <div className="space-y-3">
-              <AssignmentAuditCard decisions={assignments} />
-            </div>
-          )}
-
-          {/* Immutable Timeline */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-cyan-400" />
-              Immutable Tracking Timeline ({timeline.length} Events)
-            </h3>
-            <OrderTimeline entries={timeline} />
-          </div>
         </div>
       </div>
     </div>,
     document.body
   );
 };
-

@@ -2,7 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { adminApi, extractErrorMessage } from '../api/client';
 import { DashboardMetrics } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
-import { LayoutDashboard, CheckCircle2, ShieldAlert, Users, Clock, Package, Activity, RefreshCw, ArrowRight } from 'lucide-react';
+import { OrderDetailModal } from './OrderDetailModal';
+import { 
+  LayoutDashboard, 
+  CheckCircle2, 
+  ShieldAlert, 
+  Users, 
+  Clock, 
+  Package, 
+  Activity, 
+  RefreshCw, 
+  ArrowRight,
+  TrendingUp,
+  ArrowUpRight,
+  AlertTriangle,
+  Compass,
+  Zap
+} from 'lucide-react';
 
 interface Props {
   onNavigateToOrders: () => void;
@@ -13,6 +29,7 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const fetchMetrics = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -39,9 +56,9 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-3">
-        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        <span>Loading real-time operations dashboard...</span>
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center text-[#8A919C] dark:text-[#737A84] text-xs flex flex-col items-center justify-center gap-3">
+        <div className="w-5 h-5 border-2 border-[#3157A6] dark:border-[#6D8ED4] border-t-transparent rounded-full animate-spin" />
+        <span className="font-mono text-[11px]">Connecting to operations stream...</span>
       </div>
     );
   }
@@ -49,104 +66,176 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
   if (error || !metrics) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-rose-950/30 border border-rose-800 p-6 rounded-2xl text-rose-300 text-xs shadow-xl">
+        <div className="bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] p-6 rounded-2xl text-[#B54848] dark:text-[#D56B6B] text-xs shadow-xs">
           {error || 'Failed to load dashboard'}
         </div>
       </div>
     );
   }
 
+  const unassignedCount = metrics.orders_by_status?.CREATED || 0;
+  const failedCount = (metrics.orders_by_status?.FAILED || 0) + (metrics.orders_by_status?.RESCHEDULED || 0);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <LayoutDashboard className="w-5 h-5" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-150">
+      {/* Order Detail Modal for Clicked Audit Stream Shipments */}
+      {selectedOrderId && (
+        <OrderDetailModal
+          orderId={selectedOrderId}
+          onClose={() => setSelectedOrderId(null)}
+        />
+      )}
+
+      {/* Action Banner for Urgent Dispatches */}
+      {unassignedCount > 0 && (
+        <div className="bg-gradient-to-r from-[#FAF3E8] to-[#F1F3F5] dark:from-[#292014] dark:to-[#181C20] border border-[#F2DEBF] dark:border-[#42321D] p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-[#FAF3E8] dark:bg-[#292014] text-[#A66A16] dark:text-[#D19A4A] border border-[#F2DEBF] dark:border-[#42321D]">
+              <Compass className="w-4 h-4" />
             </div>
-            Operations Overview
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time fleet health, delivery lifecycle stats, and system activity.
+            <div>
+              <div className="font-bold text-xs text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-1.5">
+                <span>Dispatch Attention Required:</span>
+                <span className="font-mono text-[#A66A16] dark:text-[#D19A4A] bg-[#FAF3E8] dark:bg-[#292014] px-1.5 py-0.2 rounded border border-[#F2DEBF] dark:border-[#42321D]">
+                  {unassignedCount} shipment{unassignedCount > 1 ? 's' : ''} awaiting courier assignment
+                </span>
+              </div>
+              <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
+                Automated assignment engine can match nearest available couriers immediately.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onNavigateToOrders}
+            className="stripe-btn-primary text-xs py-2 px-3.5 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Open Dispatch Queue</span>
+          </button>
+        </div>
+      )}
+
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#E2E5E9] dark:border-[#2B3138]">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
+              Operations Control Center
+            </h1>
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E] px-2 py-0.5 rounded-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#287A55] dark:bg-[#55A878] animate-pulse" />
+              Live Agents Active
+            </span>
+          </div>
+          <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
+            System throughput, automated dispatch allocation, and real-time SLA metrics.
           </p>
         </div>
 
-        <button
-          onClick={() => fetchMetrics(false)}
-          disabled={isRefreshing}
-          className="text-xs bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all shadow-sm cursor-pointer self-start sm:self-auto disabled:opacity-60"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh Stats'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fetchMetrics(false)}
+            disabled={isRefreshing}
+            className="text-xs bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] text-[#171A1F] dark:text-[#E8EAED] border border-[#E2E5E9] dark:border-[#2B3138] px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-all shadow-2xs cursor-pointer disabled:opacity-60"
+          >
+            <RefreshCw className={`w-3 h-3 text-[#5F6672] dark:text-[#A7ADB5] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Updating...' : 'Refresh'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Orders */}
-        <div className="bg-slate-900/80 border border-slate-800 card-hover-glow p-5 rounded-2xl shadow-lg space-y-3 backdrop-blur-xl group">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-semibold">
-            <span>Total Shipments</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform">
-              <Package className="w-4 h-4" />
+      {/* Metric KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Shipments */}
+        <div className="stripe-card rounded-2xl p-5 space-y-3 relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[#5F6672] dark:text-[#A7ADB5] uppercase tracking-wider">Total Volume</span>
+            <div className="p-1.5 rounded-lg bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
+              <Package className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold tracking-tight text-slate-100">{metrics.total_orders}</div>
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1 border-t border-slate-800/80">
-            <span className="text-indigo-400 font-bold">{metrics.orders_by_status?.CREATED || 0}</span> awaiting assignment
+          <div className="text-3xl font-extrabold tracking-tight text-[#171A1F] dark:text-[#E8EAED] font-mono">
+            {metrics.total_orders}
+          </div>
+          <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] flex items-center gap-1.5 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+            <span className="font-mono font-bold text-[#3157A6] dark:text-[#6D8ED4] bg-[#EBF1FA] dark:bg-[#182232] px-1.5 py-0.2 rounded border border-[#D0DEF2] dark:border-[#25354E]">
+              {unassignedCount}
+            </span>
+            <span>in dispatch queue</span>
           </div>
         </div>
 
         {/* Delivered Today */}
-        <div className="bg-slate-900/80 border border-slate-800 card-hover-glow p-5 rounded-2xl shadow-lg space-y-3 backdrop-blur-xl group">
-          <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold">
-            <span>Delivered Today</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-4 h-4" />
+        <div className="stripe-card rounded-2xl p-5 space-y-3 relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[#5F6672] dark:text-[#A7ADB5] uppercase tracking-wider">Delivered Today</span>
+            <div className="p-1.5 rounded-lg bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E]">
+              <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold tracking-tight text-emerald-300">{metrics.delivered_today}</div>
-          <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-            <span className="font-semibold text-emerald-400">{metrics.orders_by_status?.DELIVERED || 0}</span> lifetime delivered
+          <div className="text-3xl font-extrabold tracking-tight text-[#287A55] dark:text-[#55A878] font-mono">
+            {metrics.delivered_today}
+          </div>
+          <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] flex items-center gap-1.5 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+            <span className="font-mono font-bold text-[#287A55] dark:text-[#55A878]">
+              {metrics.orders_by_status?.DELIVERED || 0}
+            </span>
+            <span>lifetime fulfilled</span>
           </div>
         </div>
 
         {/* Failed Today */}
-        <div className="bg-slate-900/80 border border-slate-800 card-hover-glow p-5 rounded-2xl shadow-lg space-y-3 backdrop-blur-xl group">
-          <div className="flex items-center justify-between text-xs text-rose-400 font-semibold">
-            <span>Failed Attempts Today</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 group-hover:scale-110 transition-transform">
-              <ShieldAlert className="w-4 h-4" />
+        <div className="stripe-card rounded-2xl p-5 space-y-3 relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[#5F6672] dark:text-[#A7ADB5] uppercase tracking-wider">Attempt Exceptions</span>
+            <div className="p-1.5 rounded-lg bg-[#FAF0F0] dark:bg-[#2B1717] text-[#B54848] dark:text-[#D56B6B] border border-[#F2D0D0] dark:border-[#432323]">
+              <ShieldAlert className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold tracking-tight text-rose-300">{metrics.failed_today}</div>
-          <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-            <span className="font-semibold text-amber-400">{metrics.orders_by_status?.RESCHEDULED || 0}</span> currently rescheduled
+          <div className="text-3xl font-extrabold tracking-tight text-[#B54848] dark:text-[#D56B6B] font-mono">
+            {metrics.failed_today}
+          </div>
+          <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] flex items-center gap-1.5 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+            <span className="font-mono font-bold text-[#A66A16] dark:text-[#D19A4A]">
+              {metrics.orders_by_status?.RESCHEDULED || 0}
+            </span>
+            <span>auto-rescheduled for retry</span>
           </div>
         </div>
 
         {/* Agent Fleet */}
-        <div className="bg-slate-900/80 border border-slate-800 card-hover-glow p-5 rounded-2xl shadow-lg space-y-3 backdrop-blur-xl group">
-          <div className="flex items-center justify-between text-xs text-cyan-400 font-semibold">
-            <span>Fleet Availability</span>
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 transition-transform">
-              <Users className="w-4 h-4" />
+        <div className="stripe-card rounded-2xl p-5 space-y-3 relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[#5F6672] dark:text-[#A7ADB5] uppercase tracking-wider">Agents Online</span>
+            <div className="p-1.5 rounded-lg bg-[#EBF1FA] dark:bg-[#182232] text-[#426B9E] dark:text-[#7095C4] border border-[#D0DEF2] dark:border-[#25354E]">
+              <Users className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold tracking-tight text-cyan-300">
-            {metrics.agents?.AVAILABLE || 0} <span className="text-sm text-slate-500 font-normal">/ {metrics.total_agents}</span>
+          <div className="text-3xl font-extrabold tracking-tight text-[#171A1F] dark:text-[#E8EAED] font-mono">
+            {metrics.agents?.AVAILABLE || 0} <span className="text-sm text-[#8A919C] dark:text-[#737A84] font-normal font-sans">/ {metrics.total_agents} active</span>
           </div>
-          <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-            {metrics.agents?.BUSY || 0} busy · {metrics.agents?.OFFLINE || 0} offline
+          <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] flex items-center gap-1.5 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+            <span className="font-mono text-[#171A1F] dark:text-[#E8EAED] font-medium">{metrics.agents?.BUSY || 0} on delivery run</span>
+            <span>·</span>
+            <span className="font-mono text-[#5F6672] dark:text-[#A7ADB5]">{metrics.agents?.OFFLINE || 0} offline</span>
           </div>
         </div>
       </div>
 
-      {/* Orders By Status Distribution */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 backdrop-blur-xl">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">Shipment Status Breakdown</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-center text-xs">
+      {/* Lifecycle Status Distribution Grid */}
+      <div className="stripe-card rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+              Pipeline Lifecycle Distribution
+            </h2>
+            <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">Click any stage to view matching shipments in pipeline.</p>
+          </div>
+          <span className="text-[11px] text-[#8A919C] dark:text-[#737A84] font-mono">8 Pipeline Stages</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-center">
           {[
             'CREATED',
             'ASSIGNED',
@@ -156,46 +245,80 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
             'DELIVERED',
             'FAILED',
             'RESCHEDULED',
-          ].map((st) => (
-            <div key={st} className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 card-hover-subtle space-y-1.5">
-              <div className="font-mono text-xl font-bold text-slate-100">{metrics.orders_by_status[st] || 0}</div>
-              <div>
-                <StatusBadge status={st} size="sm" />
+          ].map((st) => {
+            const count = metrics.orders_by_status[st] || 0;
+            const hasVolume = count > 0;
+            return (
+              <div 
+                key={st} 
+                onClick={onNavigateToOrders}
+                className={`p-3 rounded-xl border transition-all cursor-pointer space-y-1.5 ${
+                  hasVolume
+                    ? 'bg-white dark:bg-[#181C20] border-[#3157A6]/50 dark:border-[#6D8ED4]/60 shadow-xs hover:border-[#3157A6] dark:hover:border-[#6D8ED4]'
+                    : 'bg-[#F7F8FA] dark:bg-[#14171A] border-[#E2E5E9]/70 dark:border-[#2B3138]/70 opacity-60 hover:opacity-100 hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328]'
+                }`}
+              >
+                <div className={`font-mono text-xl font-bold ${
+                  hasVolume ? 'text-[#3157A6] dark:text-[#6D8ED4]' : 'text-[#8A919C] dark:text-[#737A84]'
+                }`}>
+                  {count}
+                </div>
+                <div>
+                  <StatusBadge status={st} size="sm" />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Recent System Activity Stream */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 backdrop-blur-xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-indigo-400" />
-            Recent Business Events & Lifecycle Transitions
-          </h2>
+      {/* Live Audit & Event Stream */}
+      <div className="stripe-card rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-[#3157A6] dark:text-[#6D8ED4]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+              Live Audit & Event Stream
+            </h2>
+          </div>
           <button
             onClick={onNavigateToOrders}
-            className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+            className="text-xs text-[#3157A6] dark:text-[#6D8ED4] hover:text-[#284A91] dark:hover:text-[#819DDE] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
           >
-            View All Orders <ArrowRight className="w-3.5 h-3.5" />
+            All Shipments <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {metrics.recent_activity.map((act) => (
             <div
               key={act.id}
-              className="bg-slate-950/60 border border-slate-800/70 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-2.5 text-xs card-hover-subtle"
+              onClick={() => setSelectedOrderId(act.order_id)}
+              className="px-3.5 py-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] hover:border-[#3157A6] dark:hover:border-[#6D8ED4] bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] flex flex-wrap items-center justify-between gap-3 text-xs transition-colors cursor-pointer group shadow-2xs"
             >
               <div className="flex items-center gap-3">
-                <span className="font-mono text-slate-400 font-semibold text-[11px]">#{act.order_id.slice(0, 8)}</span>
+                <span className="font-mono text-[#5F6672] dark:text-[#A7ADB5] font-bold text-[11px] bg-[#F1F3F5] dark:bg-[#1E2328] px-1.5 py-0.5 rounded border border-[#E2E5E9] dark:border-[#2B3138] group-hover:text-[#3157A6] dark:group-hover:text-[#6D8ED4] group-hover:border-[#3157A6]/40 transition-colors">
+                  #{act.order_id.slice(0, 8)}
+                </span>
                 <StatusBadge status={act.new_status} size="sm" />
-                {act.reason && <span className="text-slate-300 truncate max-w-md">"{act.reason}"</span>}
+                {act.reason && (
+                  <span className="text-[#171A1F] dark:text-[#E8EAED] truncate max-w-md font-medium text-[11px]">
+                    "{act.reason}"
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                {act.actor_name && <span>By: <strong className="text-slate-300 font-medium">{act.actor_name}</strong></span>}
-                <span className="font-mono text-slate-500">{new Date(act.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="flex items-center gap-3 text-[11px] text-[#8A919C] dark:text-[#737A84]">
+                {act.actor_name && (
+                  <span>
+                    By: <strong className="text-[#171A1F] dark:text-[#E8EAED] font-semibold">{act.actor_name}</strong>
+                  </span>
+                )}
+                <span className="font-mono">
+                  {new Date(act.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+                <span className="text-[#3157A6] dark:text-[#6D8ED4] font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform text-[11px]">
+                  View shipment <ArrowRight className="w-3 h-3" />
+                </span>
               </div>
             </div>
           ))}

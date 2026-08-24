@@ -1,6 +1,6 @@
 import React from 'react';
 import { DeliveryAttempt } from '../types';
-import { CheckCircle2, Clock, Truck, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, Clock, AlertTriangle } from 'lucide-react';
 
 interface Props {
   attempts: DeliveryAttempt[];
@@ -9,89 +9,43 @@ interface Props {
 export const DeliveryAttemptsList: React.FC<Props> = ({ attempts }) => {
   if (!attempts || attempts.length === 0) {
     return (
-      <div className="text-xs text-slate-400 p-6 bg-slate-950/60 rounded-2xl border border-slate-800 text-center">
-        No delivery attempts recorded yet.
+      <div className="p-3 rounded-xl bg-[#F1F3F5] dark:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] text-xs text-[#5F6672] dark:text-[#A7ADB5] font-mono">
+        No failed delivery attempts recorded.
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {attempts.map((attempt) => {
-        const isFailed = attempt.status === 'FAILED';
-        const isDelivered = attempt.status === 'DELIVERED';
-        const isInProgress = attempt.status === 'IN_PROGRESS';
+        const timeStr = attempt.completed_at || attempt.started_at || attempt.created_at;
+        const formattedDate = timeStr ? new Date(timeStr).toLocaleString('en-IN', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }) : '';
 
         return (
           <div
             key={attempt.id}
-            className={`border rounded-2xl p-4 transition-all shadow-lg card-hover-subtle ${
-              isFailed
-                ? 'bg-rose-950/20 border-rose-500/30 text-rose-200 shadow-rose-950/10'
-                : isDelivered
-                ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200 shadow-emerald-950/10'
-                : 'bg-slate-950/70 border-slate-800/80 text-slate-200'
-            }`}
+            className="p-3 bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] rounded-xl space-y-1.5 text-xs text-[#B54848] dark:text-[#D56B6B]"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800/80 pb-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-xs bg-slate-900 px-3 py-1 rounded-xl border border-slate-700/80 font-mono text-slate-100 shadow-sm">
-                  Attempt #{attempt.attempt_number}
+            <div className="flex items-center justify-between font-mono font-bold">
+              <span className="flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 text-[#B54848] dark:text-[#D56B6B]" />
+                Attempt #{attempt.attempt_number} ({attempt.status})
+              </span>
+              {formattedDate && (
+                <span className="text-[10px] text-[#B54848] dark:text-[#D56B6B] font-normal">
+                  {formattedDate}
                 </span>
-                {isDelivered && (
-                  <span className="flex items-center gap-1 text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Delivered Successfully
-                  </span>
-                )}
-                {isFailed && (
-                  <span className="flex items-center gap-1 text-[11px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-0.5 rounded-full font-bold">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    Delivery Failed
-                  </span>
-                )}
-                {isInProgress && (
-                  <span className="flex items-center gap-1 text-[11px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2.5 py-0.5 rounded-full font-bold animate-pulse">
-                    <Clock className="w-3.5 h-3.5" />
-                    Out for Delivery
-                  </span>
-                )}
-              </div>
-
-              {attempt.agent_name && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                  <Truck className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Assigned Agent: <strong className="text-slate-100 font-semibold">{attempt.agent_name}</strong></span>
-                </div>
               )}
             </div>
-
-            {/* Failure Reason */}
-            {isFailed && attempt.failure_reason && (
-              <div className="mt-3 text-xs bg-rose-950/40 border border-rose-800/60 p-3 rounded-xl text-rose-300 leading-relaxed">
-                <div className="font-semibold text-rose-400 flex items-center gap-1.5 mb-1">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  Recorded Failure Reason:
-                </div>
-                <div>{attempt.failure_reason}</div>
+            {attempt.failure_reason && (
+              <div className="text-[11px] bg-white/80 dark:bg-[#181C20]/80 p-2 rounded-lg border border-[#F2D0D0] dark:border-[#432323] text-[#171A1F] dark:text-[#E8EAED]">
+                <span className="font-semibold text-[#B54848] dark:text-[#D56B6B]">Reason: </span>
+                {attempt.failure_reason}
               </div>
             )}
-
-            {/* Attempt Timestamps */}
-            <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-slate-400 font-mono">
-              {attempt.started_at && (
-                <div>
-                  <span className="text-slate-500">Started: </span>
-                  {new Date(attempt.started_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              )}
-              {attempt.completed_at && (
-                <div>
-                  <span className="text-slate-500">Finished: </span>
-                  {new Date(attempt.completed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              )}
-            </div>
           </div>
         );
       })}

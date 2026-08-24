@@ -425,6 +425,24 @@ def update_agent(
 agents_self_router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 
+@agents_self_router.get("/zones", response_model=list[ZoneResponse])
+def list_agent_zones(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List active operational delivery zones for couriers and agents."""
+    zones = db.query(Zone).filter(Zone.is_active == True).all()
+    return [
+        ZoneResponse(
+            id=str(z.id),
+            name=z.name,
+            is_active=z.is_active,
+            area_count=len(z.areas) if z.areas else 0,
+        )
+        for z in zones
+    ]
+
+
 @agents_self_router.get("/me")
 def get_agent_self(
     db: Session = Depends(get_db),

@@ -6,23 +6,23 @@ from datetime import datetime
 
 
 class OrderCreateRequest(BaseModel):
-    pickup_address: str = Field(..., min_length=5)
+    pickup_address: str = Field(..., min_length=5, max_length=500)
     pickup_pincode: str = Field(..., min_length=4, max_length=10)
-    pickup_latitude: Optional[float] = None
-    pickup_longitude: Optional[float] = None
-    drop_address: str = Field(..., min_length=5)
+    pickup_latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    pickup_longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    drop_address: str = Field(..., min_length=5, max_length=500)
     drop_pincode: str = Field(..., min_length=4, max_length=10)
-    drop_latitude: Optional[float] = None
-    drop_longitude: Optional[float] = None
-    length_cm: float = Field(..., gt=0)
-    breadth_cm: float = Field(..., gt=0)
-    height_cm: float = Field(..., gt=0)
-    actual_weight_kg: float = Field(..., gt=0)
+    drop_latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    drop_longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    length_cm: float = Field(..., gt=0, le=2000)
+    breadth_cm: float = Field(..., gt=0, le=2000)
+    height_cm: float = Field(..., gt=0, le=2000)
+    actual_weight_kg: float = Field(..., gt=0, le=50000)
     order_type: str = Field(..., pattern="^(B2B|B2C)$")
     payment_type: str = Field(..., pattern="^(PREPAID|COD)$")
-    scheduled_date: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    customer_id: Optional[str] = None  # Admin creating on behalf of customer
+    scheduled_date: Optional[str] = Field(None, max_length=50)
+    idempotency_key: Optional[str] = Field(None, max_length=128)
+    customer_id: Optional[str] = Field(None, max_length=128)  # Admin creating on behalf of customer
 
 
 class OrderResponse(BaseModel):

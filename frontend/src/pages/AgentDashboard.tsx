@@ -1,412 +1,417 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { agentSelfApi, adminApi, ordersApi, extractErrorMessage } from '../api/client';
-import { Order, AgentAvailability, Zone } from '../types';
+import { ordersApi, adminApi, agentSelfApi, extractErrorMessage } from '../api/client';
+import { Order, Zone, AgentAvailability, OrderStatus } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { OrderDetailModal } from './OrderDetailModal';
+import { useAuth } from '../context/AuthContext';
 import { 
   Truck, 
   MapPin, 
-  Clock, 
   CheckCircle2, 
   ShieldAlert, 
   ArrowRight, 
-  Power, 
-  Edit3, 
-  RefreshCw,
-  Sparkles,
-  PackageCheck,
+  Clock, 
+  RefreshCw, 
+  X, 
+  Sparkles, 
   AlertTriangle,
-  X
+  Play,
+  RotateCcw,
+  Navigation,
+  Phone,
+  Package,
+  Zap
 } from 'lucide-react';
 
 export const AgentDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Duty State
+  const [dutyStatus, setDutyStatus] = useState<AgentAvailability>('AVAILABLE');
+  const [currentZoneId, setCurrentZoneId] = useState<string>('');
+  const [updatingDuty, setUpdatingDuty] = useState(false);
+
+  // Selected Order Modal
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Agent self-state
-  const [availability, setAvailability] = useState<AgentAvailability>('AVAILABLE');
-  const [currentZoneId, setCurrentZoneId] = useState<string | null>(null);
-  const [currentZoneName, setCurrentZoneName] = useState<string | null>(null);
-  const [updatingAvailability, setUpdatingAvailability] = useState(false);
-  const [dutyFeedback, setDutyFeedback] = useState<string | null>(null);
+  // Status Transition Action Modal
+  const [actionOrder, setActionOrder] = useState<Order | null>(null);
+  const [targetStatus, setTargetStatus] = useState<OrderStatus | ''>('');
+  const [failureReason, setFailureReason] = useState<string>('CUSTOMER_UNAVAILABLE');
+  const [actionReason, setActionReason] = useState<string>('');
+  const [actionSubmitting, setActionSubmitting] = useState(false);
 
-  // Operating zone modal state
-  const [isEditingZone, setIsEditingZone] = useState(false);
-  const [allZones, setAllZones] = useState<Zone[]>([]);
-  const [selectedNewZoneId, setSelectedNewZoneId] = useState<string>('');
-  const [savingZone, setSavingZone] = useState(false);
-
-  // Failure modal state
-  const [failureOrderId, setFailureOrderId] = useState<string | null>(null);
-  const [failureReason, setFailureReason] = useState('');
-  const [submittingFailure, setSubmittingFailure] = useState(false);
-
-  const fetchAssigned = async (showLoading = true) => {
+  const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
     try {
-      const self = await agentSelfApi.getSelf();
-      const res = await ordersApi.listOrders({ agent_id: self.id });
-      setOrders(res.orders);
+      const data = await ordersApi.listOrders({
+        agent_id: user?.id,
+      });
+      setOrders(data.orders);
     } catch (err: any) {
       setError(extractErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  const fetchSelfAndZones = async () => {
+  const fetchAgentProfileAndZones = async () => {
     try {
-      const [self, zones] = await Promise.all([
+      const [profile, zonesData] = await Promise.all([
         agentSelfApi.getSelf(),
-        adminApi.listZones(),
+        agentSelfApi.listZones(),
       ]);
-      setAvailability(self.availability_status as AgentAvailability);
-      setCurrentZoneId(self.current_zone_id || null);
-      setCurrentZoneName(self.current_zone_name || null);
-      setAllZones(zones);
-    } catch (err: any) {
-      console.error('Failed to load agent profile or zones:', err);
+      if (profile.availability_status) {
+        setDutyStatus(profile.availability_status as AgentAvailability);
+      }
+      if (profile.current_zone_id) {
+        setCurrentZoneId(profile.current_zone_id);
+      }
+      setZones(zonesData);
+    } catch (err) {
+      console.error('Failed to load agent profile or hubs', err);
     }
   };
 
   useEffect(() => {
-    fetchAssigned();
-    fetchSelfAndZones();
-  }, []);
+    fetchOrders();
+    fetchAgentProfileAndZones();
+  }, [user?.id]);
 
-  const handleStatusTransition = async (orderId: string, newStatus: string) => {
-    setActionLoading(orderId);
+  const handleDutyChange = async (newStatus: AgentAvailability, newZoneId?: string) => {
+    setUpdatingDuty(true);
+    const targetZoneId = newZoneId !== undefined ? newZoneId : currentZoneId;
     try {
-      await ordersApi.updateStatus(orderId, { status: newStatus });
-      await fetchAssigned(false);
-    } catch (err: any) {
-      alert(extractErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleMarkFailed = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!failureOrderId || !failureReason.trim()) return;
-
-    setSubmittingFailure(true);
-    try {
-      await ordersApi.updateStatus(failureOrderId, {
-        status: 'FAILED',
-        failure_reason: failureReason.trim(),
+      await agentSelfApi.updateSelf({
+        availability_status: newStatus,
+        zone_id: targetZoneId || undefined,
       });
-      setFailureOrderId(null);
-      setFailureReason('');
-      await fetchAssigned(false);
+      setDutyStatus(newStatus);
+      if (newZoneId !== undefined) setCurrentZoneId(newZoneId);
     } catch (err: any) {
       alert(extractErrorMessage(err));
     } finally {
-      setSubmittingFailure(false);
+      setUpdatingDuty(false);
     }
   };
 
-  const handleToggleAvailability = async (newStatus: AgentAvailability) => {
-    setUpdatingAvailability(true);
-    setDutyFeedback(null);
-    try {
-      await agentSelfApi.updateSelf({ availability_status: newStatus });
-      setAvailability(newStatus);
-      setDutyFeedback(`Duty status set to ${newStatus}`);
-      setTimeout(() => setDutyFeedback(null), 3000);
-    } catch (err: any) {
-      alert(extractErrorMessage(err));
-    } finally {
-      setUpdatingAvailability(false);
-    }
-  };
-
-  const handleSaveZone = async (e: React.FormEvent) => {
+  const handleTransitionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingZone(true);
+    if (!actionOrder || !targetStatus) return;
+
+    setActionSubmitting(true);
     try {
-      await agentSelfApi.updateSelf({ zone_id: selectedNewZoneId || undefined });
-      const matched = allZones.find((z) => z.id === selectedNewZoneId);
-      setCurrentZoneId(selectedNewZoneId || null);
-      setCurrentZoneName(matched ? matched.name : null);
-      setIsEditingZone(false);
-      setDutyFeedback(`Operating zone set to ${matched ? matched.name : 'Unassigned'}`);
-      setTimeout(() => setDutyFeedback(null), 3000);
+      await ordersApi.updateStatus(actionOrder.id, {
+        status: targetStatus,
+        reason: actionReason || `Status transitioned to ${targetStatus}`,
+        failure_reason: targetStatus === 'FAILED' ? failureReason : undefined,
+      });
+
+      setActionOrder(null);
+      setTargetStatus('');
+      setActionReason('');
+      fetchOrders(false);
     } catch (err: any) {
       alert(extractErrorMessage(err));
     } finally {
-      setSavingZone(false);
+      setActionSubmitting(false);
     }
   };
+
+  // Helper for determining next allowed action
+  const getNextAction = (status: OrderStatus) => {
+    switch (status) {
+      case 'ASSIGNED':
+        return { label: 'Start Pickup', next: 'PICKED_UP' as OrderStatus, color: 'stripe-btn-primary' };
+      case 'PICKED_UP':
+        return { label: 'Enter Transit', next: 'IN_TRANSIT' as OrderStatus, color: 'stripe-btn-primary' };
+      case 'IN_TRANSIT':
+        return { label: 'Out for Delivery', next: 'OUT_FOR_DELIVERY' as OrderStatus, color: 'stripe-btn-primary' };
+      case 'OUT_FOR_DELIVERY':
+        return { label: 'Mark Delivered', next: 'DELIVERED' as OrderStatus, color: 'stripe-btn-success' };
+      default:
+        return null;
+    }
+  };
+
+  // Active priority order (the first in-progress order)
+  const activeHeroOrder = orders.find(o => ['OUT_FOR_DELIVERY', 'IN_TRANSIT', 'PICKED_UP', 'ASSIGNED'].includes(o.status));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
-      {/* Top Banner: Status, Zone & Availability */}
-      <div className="bg-slate-900/90 border border-slate-800 p-6 sm:p-7 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-start sm:items-center gap-4">
-          <div className="p-3.5 bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-2xl text-white shadow-lg shadow-indigo-600/25">
-            <Truck className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-              Delivery Agent Dispatch Hub
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-150">
+      {/* Duty Status Controller Banner */}
+      <div className="stripe-card rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
+              Courier Dispatch Dashboard
             </h1>
-
-            {/* Operating Zone Indicator */}
-            <div className="flex items-center gap-2 mt-1.5 text-xs">
-              <span className="text-slate-400 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-                Base Zone:
-              </span>
-              {currentZoneName ? (
-                <span className="bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-semibold px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                  {currentZoneName}
-                  <button
-                    onClick={() => {
-                      setSelectedNewZoneId(currentZoneId || '');
-                      setIsEditingZone(true);
-                    }}
-                    className="text-slate-400 hover:text-indigo-200 cursor-pointer transition-colors"
-                    title="Change Operating Zone"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                  </button>
-                </span>
-              ) : (
-                <button
-                  onClick={() => {
-                    setSelectedNewZoneId('');
-                    setIsEditingZone(true);
-                  }}
-                  className="bg-amber-950/60 border border-amber-600/60 hover:border-amber-400 text-amber-300 font-semibold px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-105"
-                >
-                  <span>⚠️ Unassigned (Click to Set Zone)</span>
-                  <Edit3 className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+            <span className="text-[10px] font-mono text-[#5F6672] dark:text-[#A7ADB5] bg-[#F1F3F5] dark:bg-[#1E2328] px-2 py-0.5 rounded border border-[#E2E5E9] dark:border-[#2B3138]">
+              {user?.name}
+            </span>
           </div>
+          <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
+            Turn-by-turn route dispatch, live delivery confirmation, and exception logging.
+          </p>
         </div>
 
-        {/* Availability Toggle */}
-        <div className="flex flex-col items-start md:items-end gap-1.5">
-          <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 shadow-inner">
-            <span className="text-xs text-slate-400 font-semibold px-2 flex items-center gap-1">
-              <Power className="w-3.5 h-3.5 text-indigo-400" />
-              Duty:
-            </span>
-            {(['AVAILABLE', 'BUSY', 'OFFLINE'] as AgentAvailability[]).map((st) => (
-              <button
-                key={st}
-                disabled={updatingAvailability}
-                onClick={() => handleToggleAvailability(st)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  availability === st
-                    ? st === 'AVAILABLE'
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                      : st === 'BUSY'
-                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                      : 'bg-slate-700 text-slate-200'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+        {/* Ergonomic Duty Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-[#F1F3F5] dark:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] p-2 rounded-xl">
+          <div className="flex items-center gap-1">
+            <button
+              disabled={updatingDuty}
+              onClick={() => handleDutyChange('AVAILABLE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                dutyStatus === 'AVAILABLE'
+                  ? 'bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E] shadow-2xs'
+                  : 'text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[#287A55] dark:bg-[#55A878] animate-pulse" />
+              Ready for Orders
+            </button>
+
+            <button
+              disabled={updatingDuty}
+              onClick={() => handleDutyChange('BUSY')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                dutyStatus === 'BUSY'
+                  ? 'bg-[#FAF3E8] dark:bg-[#292014] text-[#A66A16] dark:text-[#D19A4A] border border-[#F2DEBF] dark:border-[#42321D] shadow-2xs'
+                  : 'text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[#A66A16] dark:bg-[#D19A4A]" />
+              On Delivery Run
+            </button>
+
+            <button
+              disabled={updatingDuty}
+              onClick={() => handleDutyChange('OFFLINE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                dutyStatus === 'OFFLINE'
+                  ? 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border border-[#E2E5E9] dark:border-[#2B3138] shadow-2xs'
+                  : 'text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[#8A919C] dark:bg-[#737A84]" />
+              Shift Ended
+            </button>
           </div>
-          {dutyFeedback && (
-            <span className="text-[11px] text-emerald-400 font-semibold animate-in fade-in">
-              ✓ {dutyFeedback}
-            </span>
-          )}
+
+          <div className="border-t sm:border-t-0 sm:border-l border-[#E2E5E9] dark:border-[#2B3138] pt-2 sm:pt-0 sm:pl-3">
+            <select
+              value={currentZoneId}
+              onChange={(e) => handleDutyChange(dutyStatus, e.target.value)}
+              className="bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] text-xs text-[#171A1F] dark:text-[#E8EAED] rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer font-medium"
+            >
+              <option value="">Base Hub: None</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>Hub: {z.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Zone Edit Modal via Portal */}
-      {isEditingZone && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <form onSubmit={handleSaveZone} className="bg-slate-900 border border-slate-800 p-6 sm:p-7 rounded-3xl max-w-md w-full space-y-4 text-xs shadow-2xl modal-animate">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
-                <MapPin className="w-4 h-4" />
-                Change Operating Delivery Zone
+      {/* Featured Current Priority Task Card */}
+      {activeHeroOrder && (
+        <div className="bg-gradient-to-r from-[#3157A6]/10 via-[#F7F8FA] to-transparent dark:from-[#6D8ED4]/15 dark:via-[#181C20] dark:to-transparent border border-[#3157A6]/30 dark:border-[#6D8ED4]/40 rounded-2xl p-6 space-y-4 shadow-sm animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#3157A6] dark:bg-[#6D8ED4] text-white dark:text-[#111417]">
+                <Zap className="w-4 h-4" />
+              </span>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+                  Active Priority Task · Next Stop
+                </span>
+                <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-mono">
+                  Order #{activeHeroOrder.id.slice(0, 8)} ({activeHeroOrder.payment_type} · ₹{activeHeroOrder.total_charge.toFixed(2)})
+                </div>
               </div>
+            </div>
+            <StatusBadge status={activeHeroOrder.status} size="md" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-[#8A919C] dark:text-[#737A84] block">Deliver To</span>
+              <div className="text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">{activeHeroOrder.drop_address}</div>
+              <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5] font-mono">PIN: {activeHeroOrder.drop_pincode} ({activeHeroOrder.drop_zone_name || 'Zone'})</div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 flex-wrap">
+              {(() => {
+                const action = getNextAction(activeHeroOrder.status);
+                if (!action) return null;
+                return (
+                  <button
+                    onClick={() => {
+                      setActionOrder(activeHeroOrder);
+                      setTargetStatus(action.next);
+                      setActionReason('');
+                    }}
+                    className={`${action.color} py-2.5 px-5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md`}
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>{action.label}</span>
+                  </button>
+                );
+              })()}
+
               <button
-                type="button"
-                onClick={() => setIsEditingZone(false)}
-                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg"
+                onClick={() => {
+                  setActionOrder(activeHeroOrder);
+                  setTargetStatus('FAILED');
+                  setFailureReason('CUSTOMER_UNAVAILABLE');
+                  setActionReason('');
+                }}
+                className="py-2.5 px-3 rounded-xl bg-[#FAF0F0] dark:bg-[#2B1717] hover:bg-[#F2D0D0] dark:hover:bg-[#432323] text-[#B54848] dark:text-[#D56B6B] border border-[#F2D0D0] dark:border-[#432323] transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5"
+                title="Record Delivery Issue"
               >
-                <X className="w-4 h-4" />
+                <ShieldAlert className="w-4 h-4" />
+                <span>Report Issue</span>
               </button>
             </div>
-            <p className="text-slate-300">
-              Select your assigned hub or service area. The automated assignment engine uses this to route packages destined for your coverage area.
-            </p>
-            <div>
-              <label className="block text-slate-300 mb-1.5 font-semibold">Select Operational Zone</label>
-              <select
-                value={selectedNewZoneId}
-                onChange={(e) => setSelectedNewZoneId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl p-2.5 text-slate-100 focus:outline-none cursor-pointer"
-              >
-                <option value="">-- No Operating Zone (Floating Agent) --</option>
-                {allZones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsEditingZone(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={savingZone || !selectedNewZoneId}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl disabled:opacity-50 cursor-pointer transition-all shadow-lg shadow-indigo-600/25"
-              >
-                {savingZone ? 'Saving...' : 'Save Zone'}
-              </button>
-            </div>
-          </form>
-        </div>,
-        document.body
+          </div>
+        </div>
       )}
 
-      {/* Assigned Orders Grid */}
+      {/* Deliveries Queue Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">Assigned Deliveries ({orders.length})</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+              Assigned Shipments ({orders.length})
+            </h2>
+          </div>
           <button
-            onClick={() => fetchAssigned(false)}
-            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 font-semibold cursor-pointer transition-colors"
+            onClick={() => fetchOrders()}
+            className="text-xs text-[#3157A6] dark:text-[#6D8ED4] hover:text-[#284A91] dark:hover:text-[#819DDE] flex items-center gap-1 font-semibold transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
+            <RefreshCw className="w-3 h-3" />
+            Refresh Queue
           </button>
         </div>
 
         {loading ? (
-          <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 flex flex-col items-center justify-center gap-3">
-            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <span>Loading assigned delivery dispatch...</span>
+          <div className="p-12 text-center text-[#8A919C] dark:text-[#737A84] text-xs stripe-card rounded-2xl flex flex-col items-center justify-center gap-3">
+            <div className="w-5 h-5 border-2 border-[#3157A6] dark:border-[#6D8ED4] border-t-transparent rounded-full animate-spin" />
+            <span className="text-[11px]">Loading active shipments...</span>
           </div>
         ) : error ? (
-          <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-2xl text-rose-300 text-xs shadow-lg">
+          <div className="p-6 bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] rounded-2xl text-[#B54848] dark:text-[#D56B6B] text-xs">
             {error}
           </div>
         ) : orders.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 space-y-3 shadow-lg">
-            <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-            <div className="font-bold text-slate-200 text-sm">No active shipments in your queue</div>
-            <p className="text-xs text-slate-500">Ensure your duty status is set to AVAILABLE to automatically receive dispatched orders.</p>
+          <div className="p-8 text-center text-[#5F6672] dark:text-[#A7ADB5] stripe-card rounded-2xl flex flex-col items-center justify-center gap-2.5 max-w-md mx-auto border border-[#E2E5E9] dark:border-[#2B3138]">
+            <div className="w-10 h-10 rounded-full bg-[#F1F3F5] dark:bg-[#1E2328] flex items-center justify-center text-[#3157A6] dark:text-[#6D8ED4] border border-[#E2E5E9] dark:border-[#2B3138]">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-sm">Queue is clear</div>
+            <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] max-w-xs leading-relaxed">
+              No deliveries are currently assigned. New assignments will appear here automatically.
+            </p>
+            <button
+              onClick={() => fetchOrders()}
+              className="mt-1 stripe-btn-secondary px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Refresh Queue
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {orders.map((order, idx) => {
-              const isWorking = actionLoading === order.id;
+              const action = getNextAction(order.status);
+              const isTerminal = order.status === 'DELIVERED' || order.status === 'CANCELLED';
 
               return (
                 <div
                   key={order.id}
-                  style={{ animationDelay: `${idx * 40}ms` }}
-                  className="bg-slate-900/80 border border-slate-800 card-hover-glow card-enter rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between backdrop-blur-xl"
+                  style={{ animationDelay: `${idx * 30}ms` }}
+                  className="stripe-card-interactive card-enter rounded-2xl p-5 space-y-4 flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-slate-200">#{order.id.slice(0, 8)}</span>
+                      <button
+                        onClick={() => setSelectedOrderId(order.id)}
+                        className="font-mono text-xs font-bold text-[#171A1F] dark:text-[#E8EAED] hover:text-[#3157A6] dark:hover:text-[#6D8ED4] transition-colors cursor-pointer"
+                      >
+                        #{order.id.slice(0, 8)}
+                      </button>
                       <StatusBadge status={order.status} size="sm" />
                     </div>
 
-                    <div className="text-xs space-y-2 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80">
-                      <div>
-                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Pickup:</span>
-                        <span className="text-slate-200 font-medium">{order.pickup_address} ({order.pickup_pincode})</span>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-[#287A55] dark:text-[#55A878] shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] uppercase font-bold">Pickup Origin</div>
+                          <div className="text-[#171A1F] dark:text-[#E8EAED] font-medium">{order.pickup_address}</div>
+                          <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[10px]"><span className="font-mono">PIN {order.pickup_pincode}</span></div>
+                        </div>
                       </div>
-                      <div className="pt-2 border-t border-slate-800/80">
-                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Deliver To:</span>
-                        <span className="text-slate-200 font-bold">{order.drop_address} ({order.drop_pincode})</span>
+
+                      <div className="flex items-start gap-2 pt-1.5 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+                        <MapPin className="w-3.5 h-3.5 text-[#B54848] dark:text-[#D56B6B] shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] uppercase font-bold">Delivery Drop</div>
+                          <div className="text-[#171A1F] dark:text-[#E8EAED] font-semibold">{order.drop_address}</div>
+                          <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[10px]"><span className="font-mono">PIN {order.drop_pincode}</span> ({order.drop_zone_name || 'Zone'})</div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                      <span>Payment: <strong className={order.payment_type === 'COD' ? 'text-amber-300 font-bold' : 'text-emerald-300 font-bold'}>{order.payment_type}</strong></span>
-                      <span>Total: <strong className="text-slate-100">₹{order.total_charge.toFixed(2)}</strong></span>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-[#F1F3F5] dark:bg-[#1E2328] p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
+                      <div>
+                        <span className="text-[#8A919C] dark:text-[#737A84] block text-[9px] uppercase font-semibold">Payment</span>
+                        <strong className="text-[#171A1F] dark:text-[#E8EAED]">{order.payment_type}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[#8A919C] dark:text-[#737A84] block text-[9px] uppercase font-semibold">Amount</span>
+                        <strong className="text-[#287A55] dark:text-[#55A878] font-bold">₹{order.total_charge.toFixed(2)}</strong>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Actions based on valid forward state machine */}
-                  <div className="pt-3 border-t border-slate-800/80 space-y-2">
-                    {order.status === 'ASSIGNED' && (
+                  {/* Actions Bar */}
+                  <div className="pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138] flex items-center gap-2">
+                    {action && (
                       <button
-                        disabled={isWorking}
-                        onClick={() => handleStatusTransition(order.id, 'PICKED_UP')}
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-indigo-600/25 cursor-pointer disabled:opacity-50"
+                        onClick={() => {
+                          setActionOrder(order);
+                          setTargetStatus(action.next);
+                          setActionReason('');
+                        }}
+                        className={`flex-1 ${action.color} py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer font-semibold`}
                       >
-                        {isWorking ? 'Updating...' : 'Mark Package Picked Up'}
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>{action.label}</span>
                       </button>
                     )}
 
-                    {order.status === 'PICKED_UP' && (
+                    {!isTerminal && order.status !== 'FAILED' && (
                       <button
-                        disabled={isWorking}
-                        onClick={() => handleStatusTransition(order.id, 'IN_TRANSIT')}
-                        className="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-cyan-600/25 cursor-pointer disabled:opacity-50"
+                        onClick={() => {
+                          setActionOrder(order);
+                          setTargetStatus('FAILED');
+                          setFailureReason('CUSTOMER_UNAVAILABLE');
+                          setActionReason('');
+                        }}
+                        className="p-1.5 rounded-lg bg-[#FAF0F0] dark:bg-[#2B1717] hover:bg-[#F2D0D0] dark:hover:bg-[#432323] text-[#B54848] dark:text-[#D56B6B] border border-[#F2D0D0] dark:border-[#432323] transition-colors cursor-pointer text-xs flex items-center gap-1"
+                        title="Record Delivery Issue"
                       >
-                        {isWorking ? 'Updating...' : 'Start Transit to Destination'}
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-semibold">Issue</span>
                       </button>
                     )}
-
-                    {order.status === 'IN_TRANSIT' && (
-                      <button
-                        disabled={isWorking}
-                        onClick={() => handleStatusTransition(order.id, 'OUT_FOR_DELIVERY')}
-                        className="w-full bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-purple-600/25 cursor-pointer disabled:opacity-50"
-                      >
-                        {isWorking ? 'Updating...' : 'Out for Delivery (Final Mile)'}
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {order.status === 'OUT_FOR_DELIVERY' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          disabled={isWorking}
-                          onClick={() => handleStatusTransition(order.id, 'DELIVERED')}
-                          className="bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 transition-all shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Mark Delivered
-                        </button>
-                        <button
-                          disabled={isWorking}
-                          onClick={() => setFailureOrderId(order.id)}
-                          className="bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 transition-all shadow-lg shadow-rose-600/25 cursor-pointer disabled:opacity-50"
-                        >
-                          <ShieldAlert className="w-3.5 h-3.5" />
-                          Mark Failed
-                        </button>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => setSelectedOrderId(order.id)}
-                      className="w-full text-center text-xs text-slate-400 hover:text-slate-200 py-1.5 cursor-pointer transition-colors font-medium"
-                    >
-                      View Full Details & History →
-                    </button>
                   </div>
                 </div>
               );
@@ -415,45 +420,94 @@ export const AgentDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Failure Reason Input Modal */}
-      {failureOrderId && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <form onSubmit={handleMarkFailed} className="bg-slate-900 border border-rose-800/80 p-6 sm:p-7 rounded-3xl max-w-md w-full space-y-4 text-xs shadow-2xl modal-animate">
-            <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
-              <ShieldAlert className="w-5 h-5" />
-              Record Delivery Attempt Failure
-            </div>
-            <p className="text-slate-300">
-              Please specify the exact reason for the failed delivery. This reason will be recorded on the delivery attempt and notified to the customer for rescheduling.
-            </p>
-            <div>
-              <label className="block text-slate-300 mb-1.5 font-semibold">Failure Reason</label>
-              <textarea
-                required
-                rows={3}
-                value={failureReason}
-                onChange={(e) => setFailureReason(e.target.value)}
-                placeholder="e.g. Customer unavailable at address, phone unreachable after 3 attempts"
-                className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30 rounded-xl p-3 text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
-              />
-            </div>
-            <div className="flex justify-end gap-2.5 pt-2">
+      {/* Action Transition Modal */}
+      {actionOrder && targetStatus && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <form onSubmit={handleTransitionSubmit} className="bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] rounded-2xl max-w-md w-full p-6 space-y-4 text-xs shadow-xl modal-animate">
+            <div className="flex items-center justify-between border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
+              <div className="font-bold text-sm text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-2">
+                {targetStatus === 'FAILED' ? (
+                  <ShieldAlert className="w-4 h-4 text-[#B54848] dark:text-[#D56B6B]" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-[#3157A6] dark:text-[#6D8ED4]" />
+                )}
+                Confirm Status: {targetStatus}
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  setFailureOrderId(null);
-                  setFailureReason('');
-                }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-colors"
+                onClick={() => setActionOrder(null)}
+                className="text-[#8A919C] hover:text-[#171A1F] dark:hover:text-[#E8EAED] p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1 bg-[#F1F3F5] dark:bg-[#1E2328] p-3 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
+              <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Order: <strong className="text-[#171A1F] dark:text-[#E8EAED] font-mono">#{actionOrder.id.slice(0, 8)}</strong></div>
+              <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Destination: <strong className="text-[#171A1F] dark:text-[#E8EAED]">{actionOrder.drop_address}</strong></div>
+            </div>
+
+            {targetStatus === 'FAILED' ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Primary Issue Reason</label>
+                  <select
+                    value={failureReason}
+                    onChange={(e) => setFailureReason(e.target.value)}
+                    className="w-full linear-input rounded-lg p-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none cursor-pointer"
+                  >
+                    <option value="CUSTOMER_UNAVAILABLE">Customer Unavailable at Address</option>
+                    <option value="INCORRECT_ADDRESS">Incomplete or Incorrect Address</option>
+                    <option value="CUSTOMER_REFUSED">Customer Refused Delivery / COD</option>
+                    <option value="PREMISES_CLOSED">Premises / Gate Closed</option>
+                    <option value="WEATHER_DELAY">Inclement Weather / Road Block</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Field Notes (Optional)</label>
+                  <textarea
+                    rows={2}
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    placeholder="e.g. Called customer twice, doorbell unanswered..."
+                    className="w-full linear-input rounded-lg p-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
+                  />
+                </div>
+
+                <div className="bg-[#FAF3E8] dark:bg-[#292014] border border-[#F2DEBF] dark:border-[#42321D] p-2.5 rounded-lg text-[#A66A16] dark:text-[#D19A4A] text-[11px] leading-relaxed">
+                  <strong>Automated Rescheduling:</strong> This failure attempt triggers an automated reschedule notice and updates the customer via SMS.
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Delivery Confirmation Notes (Optional)</label>
+                <input
+                  type="text"
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  placeholder="e.g., Handed over to recipient with signature"
+                  className="w-full linear-input rounded-lg p-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+              <button
+                type="button"
+                onClick={() => setActionOrder(null)}
+                className="px-3 py-1.5 bg-[#F1F3F5] dark:bg-[#1E2328] hover:bg-[#E2E5E9] dark:hover:bg-[#2B3138] text-[#171A1F] dark:text-[#E8EAED] rounded-lg cursor-pointer text-xs"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={submittingFailure || !failureReason}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl disabled:opacity-50 cursor-pointer transition-all shadow-lg shadow-rose-600/25"
+                disabled={actionSubmitting}
+                className={`px-4 py-1.5 rounded-lg text-xs cursor-pointer disabled:opacity-50 font-semibold ${
+                  targetStatus === 'FAILED' ? 'bg-[#B54848] hover:bg-[#8F3939] text-white font-semibold' : 'stripe-btn-primary'
+                }`}
               >
-                {submittingFailure ? 'Submitting...' : 'Record Failure'}
+                {actionSubmitting ? 'Updating...' : `Confirm ${targetStatus}`}
               </button>
             </div>
           </form>
@@ -466,7 +520,7 @@ export const AgentDashboard: React.FC = () => {
         <OrderDetailModal
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
-          onRefreshNeeded={fetchAssigned}
+          onRefreshNeeded={fetchOrders}
         />
       )}
     </div>

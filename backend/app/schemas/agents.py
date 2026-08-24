@@ -5,23 +5,23 @@ from pydantic import BaseModel, Field
 
 
 class AgentCreateRequest(BaseModel):
-    email: str = Field(..., min_length=5)
-    password: str = Field(..., min_length=6)
-    name: str = Field(..., min_length=1)
-    phone: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    zone_id: Optional[str] = None
-    max_capacity: int = Field(5, gt=0)
+    email: str = Field(..., min_length=5, max_length=255)
+    password: str = Field(..., min_length=6, max_length=128)
+    name: str = Field(..., min_length=1, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    zone_id: Optional[str] = Field(None, max_length=128)
+    max_capacity: int = Field(5, gt=0, le=100)
 
 
 class AgentUpdateRequest(BaseModel):
-    availability_status: Optional[str] = None  # AVAILABLE, BUSY, OFFLINE
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    zone_id: Optional[str] = None
-    max_capacity: Optional[int] = Field(None, gt=0)
-    current_load: Optional[int] = Field(None, ge=0)
+    availability_status: Optional[str] = Field(None, pattern="^(AVAILABLE|BUSY|OFFLINE)$")
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    zone_id: Optional[str] = Field(None, max_length=128)
+    max_capacity: Optional[int] = Field(None, gt=0, le=100)
+    current_load: Optional[int] = Field(None, ge=0, le=100)
     is_active: Optional[bool] = None
 
 

@@ -36,7 +36,16 @@ def get_current_user(
             status_code=401,
         )
 
-    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    try:
+        user_uuid = UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        raise AppError(
+            code=ErrorCodes.UNAUTHORIZED,
+            message="Malformed token subject identifier.",
+            status_code=401,
+        )
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if user is None or not user.is_active:
         raise AppError(
             code=ErrorCodes.UNAUTHORIZED,

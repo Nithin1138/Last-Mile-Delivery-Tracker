@@ -62,81 +62,80 @@ export const AdminRateCardsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <CreditCard className="w-5 h-5" />
-          </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-150">
+      <div className="pb-2 border-b border-[#E2E5E9] dark:border-[#2B3138]">
+        <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
           Rate Cards & COD Pricing Engine
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Database-driven pricing rules with immutable versioning. Editing a rate card supersedes the active version without modifying historical orders.
+        <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
+          Immutable versioned billing matrices. Updates create a new version without modifying historical orders.
         </p>
       </div>
 
-      {/* Rate Cards Table */}
+      {/* Rate Cards Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">Active Rate Cards (B2B/B2C × INTRA/INTER)</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
+            Active Rate Cards (B2B / B2C × INTRA / INTER)
+          </h2>
           <button
             onClick={fetchData}
-            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 font-semibold cursor-pointer transition-colors"
+            className="text-xs text-[#3157A6] dark:text-[#6D8ED4] hover:text-[#284A91] dark:hover:text-[#819DDE] flex items-center gap-1 font-semibold cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-3 h-3" />
             Refresh
           </button>
         </div>
 
         {loading ? (
-          <div className="p-16 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 flex flex-col items-center justify-center gap-3">
-            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <span>Loading pricing matrices...</span>
+          <div className="p-16 text-center text-[#8A919C] dark:text-[#737A84] text-xs stripe-card rounded-2xl flex flex-col items-center justify-center gap-3">
+            <div className="w-5 h-5 border-2 border-[#3157A6] dark:border-[#6D8ED4] border-t-transparent rounded-full animate-spin" />
+            <span className="font-mono text-[11px]">Loading pricing matrix...</span>
           </div>
         ) : error ? (
-          <div className="p-6 bg-rose-950/30 border border-rose-800 rounded-2xl text-rose-300 text-xs shadow-lg">
+          <div className="p-6 bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] rounded-2xl text-[#B54848] dark:text-[#D56B6B] text-xs">
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {rateCards.map((card, idx) => (
               <div
                 key={card.id}
-                style={{ animationDelay: `${idx * 40}ms` }}
-                className="bg-slate-900/80 border border-slate-800 card-hover-glow card-enter rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between backdrop-blur-xl"
+                style={{ animationDelay: `${idx * 30}ms` }}
+                className="stripe-card-interactive card-enter rounded-2xl p-5 space-y-3.5 flex flex-col justify-between"
               >
-                <div className="space-y-3.5">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-100">
+                    <span className="font-bold text-xs text-[#171A1F] dark:text-[#E8EAED] font-mono">
                       {card.order_type} · {card.zone_type}
                     </span>
-                    <span className="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                    <span className="text-[10px] bg-[#F1F3F5] dark:bg-[#1E2328] text-[#5F6672] dark:text-[#A7ADB5] border border-[#E2E5E9] dark:border-[#2B3138] px-2 py-0.5 rounded font-mono font-bold">
                       v{card.version}
                     </span>
                   </div>
 
-                  <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/80 space-y-2 text-xs">
+                  <div className="bg-[#F1F3F5] dark:bg-[#1E2328] p-3 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] space-y-1.5 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Base Minimum Fee:</span>
-                      <span className="font-mono text-slate-100 font-bold">₹{card.base_fee.toFixed(2)}</span>
+                      <span className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px]">Base Fee:</span>
+                      <span className="font-mono text-[#171A1F] dark:text-[#E8EAED] font-bold">₹{card.base_fee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Weight Charge:</span>
-                      <span className="font-mono text-slate-100 font-bold">₹{card.rate_per_kg.toFixed(2)} / kg</span>
+                      <span className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px]">Rate / kg:</span>
+                      <span className="font-mono text-[#171A1F] dark:text-[#E8EAED] font-bold">₹{card.rate_per_kg.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-500 font-mono">
-                    Updated: {card.effective_from ? new Date(card.effective_from).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Active'}
+                  <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] font-mono">
+                    Effective: {card.effective_from ? new Date(card.effective_from).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Current'}
                   </div>
                 </div>
 
                 <button
                   onClick={() => handleStartEdit(card)}
-                  className="w-full bg-slate-800 hover:bg-indigo-600 active:scale-95 text-slate-200 hover:text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  className="w-full bg-[#F1F3F5] dark:bg-[#1E2328] hover:bg-[#E2E5E9] dark:hover:bg-[#2B3138] text-[#171A1F] dark:text-[#E8EAED] font-semibold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1 transition-all cursor-pointer border border-[#E2E5E9] dark:border-[#2B3138]"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  Edit & Create v{card.version + 1}
+                  <Edit2 className="w-3 h-3" />
+                  Edit to v{card.version + 1}
                 </button>
               </div>
             ))}
@@ -145,48 +144,47 @@ export const AdminRateCardsPage: React.FC = () => {
       </div>
 
       {/* COD Surcharges Section */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-4 backdrop-blur-xl">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">Active COD Surcharge Configuration</h2>
+      <div className="stripe-card rounded-2xl p-6 space-y-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">COD Surcharge Configuration</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {codSurcharges.map((cod) => (
-            <div key={cod.id} className="bg-slate-950/70 border border-slate-800/80 p-4 rounded-2xl space-y-2 card-hover-subtle">
+            <div key={cod.id} className="bg-[#F1F3F5] dark:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] p-3.5 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-amber-400">{cod.order_type} Payment Mode</span>
-                <span className="font-mono text-slate-500 text-[10px]">Flat + Percentage</span>
+                <span className="text-[#A66A16] dark:text-[#D19A4A]">{cod.order_type} Payment Surcharge</span>
+                <span className="font-mono text-[#8A919C] dark:text-[#737A84] text-[10px]">Flat + Percentage</span>
               </div>
-              <div className="text-xs text-slate-300 font-mono">
-                Flat: <strong className="text-slate-100">₹{cod.flat_amount.toFixed(2)}</strong> + Percentage: <strong className="text-slate-100">{cod.percent_of_base}% of base</strong>
+              <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5] font-mono">
+                Flat: <strong className="text-[#171A1F] dark:text-[#E8EAED]">₹{cod.flat_amount.toFixed(2)}</strong> + Percentage: <strong className="text-[#171A1F] dark:text-[#E8EAED]">{cod.percent_of_base}% of Base</strong>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-
-      {/* Edit Rate Card Modal rendered via Portal */}
+      {/* Edit Rate Card Modal */}
       {editingCard && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <form onSubmit={handleSaveRateCard} className="bg-slate-900 border border-slate-800 p-6 sm:p-7 rounded-3xl max-w-md w-full space-y-4 text-xs shadow-2xl modal-animate">
-            <div className="flex items-center justify-between">
-              <div className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-indigo-400" />
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <form onSubmit={handleSaveRateCard} className="bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] rounded-2xl max-w-md w-full p-6 space-y-3.5 text-xs shadow-xl modal-animate">
+            <div className="flex items-center justify-between border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
+              <div className="font-bold text-sm text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-1.5">
+                <Edit2 className="w-4 h-4 text-[#3157A6] dark:text-[#6D8ED4]" />
                 Update Rate Card ({editingCard.order_type} · {editingCard.zone_type})
               </div>
               <button
                 type="button"
                 onClick={() => setEditingCard(null)}
-                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg"
+                className="text-[#8A919C] hover:text-[#171A1F] dark:hover:text-[#E8EAED] p-1 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="bg-indigo-950/30 border border-indigo-800/40 p-3 rounded-2xl text-indigo-300 text-[11px] leading-relaxed">
-              <strong>Immutable Versioning:</strong> Saving will increment to <span className="font-mono font-bold">v{editingCard.version + 1}</span>. All future orders will use this rate, while historical orders remain locked to their creation rates.
+            <div className="bg-[#EBF1FA] dark:bg-[#182232] border border-[#D0DEF2] dark:border-[#25354E] p-2.5 rounded-lg text-[#3157A6] dark:text-[#6D8ED4] text-[11px] leading-relaxed">
+              <strong>Immutable Versioning:</strong> Increments to <span className="font-mono font-bold">v{editingCard.version + 1}</span>. Historical orders retain their original frozen rates.
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1.5 font-semibold">Base Minimum Fee (₹)</label>
+              <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Base Minimum Fee (₹)</label>
               <input
                 type="number"
                 step="0.01"
@@ -194,12 +192,12 @@ export const AdminRateCardsPage: React.FC = () => {
                 required
                 value={editBaseFee}
                 onChange={(e) => setEditBaseFee(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl p-2.5 font-mono text-slate-100 focus:outline-none transition-all"
+                className="w-full linear-input rounded-lg p-2 font-mono text-[#171A1F] dark:text-[#E8EAED] text-xs focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1.5 font-semibold">Rate Per Kg (₹)</label>
+              <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Rate Per Kg (₹)</label>
               <input
                 type="number"
                 step="0.01"
@@ -207,24 +205,24 @@ export const AdminRateCardsPage: React.FC = () => {
                 required
                 value={editRatePerKg}
                 onChange={(e) => setEditRatePerKg(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl p-2.5 font-mono text-slate-100 focus:outline-none transition-all"
+                className="w-full linear-input rounded-lg p-2 font-mono text-[#171A1F] dark:text-[#E8EAED] text-xs focus:outline-none"
               />
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
               <button
                 type="button"
                 onClick={() => setEditingCard(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-colors"
+                className="px-3 py-1.5 bg-[#F1F3F5] dark:bg-[#1E2328] hover:bg-[#E2E5E9] dark:hover:bg-[#2B3138] text-[#171A1F] dark:text-[#E8EAED] rounded-lg cursor-pointer text-xs"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl disabled:opacity-50 cursor-pointer transition-all shadow-lg shadow-indigo-600/25"
+                className="stripe-btn-primary px-4 py-1.5 rounded-lg text-xs cursor-pointer disabled:opacity-50"
               >
-                {saving ? 'Creating New Version...' : `Publish v${editingCard.version + 1}`}
+                {saving ? 'Publishing...' : `Publish v${editingCard.version + 1}`}
               </button>
             </div>
           </form>

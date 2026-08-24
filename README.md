@@ -48,7 +48,7 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 4. Customer Login (Email: rohit.verma@gmail.com / Pass: customer123)
    ├── Open the order details → Notice Delivery Attempt #1 recorded as FAILED
    ├── Click "Reschedule Delivery" → Select new delivery date
-   └── Atomic Execution: System transitions order FAILED ➔ RESCHEDULED ➔ ASSIGNED, releases Agent #1, auto-dispatches the nearest available Agent #2, creates Delivery Attempt #2, and sends transactional email/SMS notifications!
+   └── Atomic Execution: System transitions order FAILED ➔ RESCHEDULED ➔ ASSIGNED, releases Agent #1, auto-dispatches the nearest available Agent #2, creates Delivery Attempt #2, and triggers customer notifications!
 
 5. Agent Login (Assigned Agent)
    ├── Mark "Delivered" with proof/notes
@@ -76,19 +76,18 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (67 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
-
+- **Testing**: Pytest (68 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
 
 ---
 
 ## 🔔 Notification Engine (Email & SMS)
 
-The platform includes production-ready transactional notification provider abstractions with graceful failure resilience:
+The platform includes transactional notification provider abstractions with graceful failure resilience:
 
 - **Email Provider** (`NotificationProvider` ➔ `ResendNotificationProvider`): Sends transactional HTML emails on order lifecycle events (Created, Assigned, Status Updates, Delivery Failed, Rescheduled). Configured via `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL`. (Supports `RESEND_TEST_EMAIL` for developer testing).
 - **SMS Provider** (`SmsProvider` ➔ `TwilioSmsProvider`): Sends instant SMS text alerts to customer mobile numbers via Twilio REST API. Configured via `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. (Supports `TWILIO_TEST_PHONE` for testing trial accounts).
 - **Zero-Config Local Evaluation**: Automatically falls back to `ConsoleNotificationProvider` and `ConsoleSmsProvider` when API keys are not present in `.env`, logging structured payloads without failing transactions.
-- **Fault-Tolerant & Audit Logged**: External provider downtimes never block core database transactions. Every notification attempt is tracked in the `notifications` audit table with delivery status (`SENT` / `FAILED`) and error details.
+- **Fault-Tolerant & Audit Logged**: External provider downtimes or daily quota exhaustion never abort core database transactions. Every notification attempt is tracked in the `notifications` audit table with delivery status (`SENT` / `FAILED`) and provider response details.
 
 ---
 
@@ -174,10 +173,9 @@ WHERE id = :agent_id
 | `GET` | `/api/admin/cod-surcharges` | Admin Only | List COD surcharge configurations |
 | `POST` | `/api/admin/cod-surcharges` | Admin Only | Update COD surcharge parameters |
 
-
 ---
 
-## 🗄️ Database Schema & Invariants
+## 🗄️ Database Schema & Audit Immutability Invariants
 
 ```
                ┌───────────────┐
@@ -204,9 +202,14 @@ WHERE id = :agent_id
 ```
 
 - **Partial Unique Index**: `uq_rate_cards_one_active_per_type` enforces at database level that only 1 active rate card exists per `(order_type, zone_type)`.
-- **Append-Only History Protection**: `OrderStatusHistory` and `DeliveryAttempts` enforce `ondelete="RESTRICT"` to prevent cascade deletion.
+- **Append-Only History Protection**: `OrderStatusHistory`, `AssignmentDecision`, and `Notification` are strictly append-only audit tables. Any SQL `UPDATE` or `DELETE` is blocked via PostgreSQL triggers (`trg_immutable_order_status_history`, `trg_immutable_assignment_decisions`, `trg_immutable_notifications`) and SQLAlchemy ORM event listeners.
+- **DeliveryAttempt Lifecycle & Terminal Immutability**:
+  - `DeliveryAttempt` identity fields (`id`, `order_id`, `attempt_number`) are immutable.
+  - Active attempts transition through legitimate state machine steps (`PENDING -> IN_PROGRESS -> FAILED / DELIVERED`).
+  - Terminal attempts (`FAILED`, `DELIVERED`) are strictly immutable.
+  - Deletions are forbidden across all states.
+- **Foreign Key RESTRICT**: `ondelete="RESTRICT"` prevents cascading deletions of parent order records.
 - **Actor-Scoped Idempotency**: `IdempotencyKey` stores `(user_id, key)` with a composite uniqueness constraint.
-
 
 ---
 
@@ -257,10 +260,9 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Complete Test Suite Coverage (67 Tests):
+### Complete Test Suite Coverage (68 Tests):
 - `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.
-- `test_security_rbac.py` (17 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.
-
+- `test_security_rbac.py` (18 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, complete lifecycle state machine and terminal lock validation, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.
 - `test_concurrency.py` (7 tests): True multithreaded PostgreSQL concurrent claim race conditions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via SELECT FOR UPDATE, initial active rate card concurrent creation race conflict handling through FastAPI HTTP endpoint proving exact `[200, 409]` conflict behavior, capacity limits, release mechanics.
 - `test_pricing_engine.py` (8 tests): Volumetric weight, chargeable weight, B2B/B2C, INTRA/INTER rates, COD formulas, canonical worked example.
 - `test_order_lifecycle.py` (5 tests): State machine transitions, illegal transitions, cancellation rules, append-only history.
@@ -310,4 +312,4 @@ This produces a lightweight distribution archive `LastMileDeliveryTracker-Submis
 - [Requirements Mapping Matrix](docs/requirements-mapping.md)
 - [Engineering Trade-Offs](docs/tradeoffs.md)
 - [System Design Write-Up (Deliverable #4)](docs/system-design.md)
-
+- [External Notification Verification](docs/external_notification_verification.md)

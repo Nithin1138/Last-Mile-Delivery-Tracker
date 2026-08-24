@@ -1,388 +1,244 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Truck, 
-  Lock, 
-  Mail, 
-  AlertCircle, 
-  ArrowRight, 
-  User, 
-  Phone, 
-  ShieldCheck, 
-  Sparkles, 
-  ChevronRight, 
-  CheckCircle2,
-  Package
-} from 'lucide-react';
-import { extractErrorMessage } from '../api/client';
+import { useTheme } from '../context/ThemeContext';
+import { Truck, ShieldCheck, UserCheck, Package, AlertCircle, ArrowRight, Sun, Moon, Sparkles } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { login, register, quickLogin } = useAuth();
-
-  // Screen mode: 'landing' (quick persona entry) | 'custom-signin' | 'register'
-  const [authMode, setAuthMode] = useState<'landing' | 'custom-signin' | 'register'>('landing');
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
-
-  // Sign In fields
+  const { login, quickLogin, register } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // Register fields
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('+91');
+  const [role, setRole] = useState<'CUSTOMER' | 'AGENT'>('CUSTOMER');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
+
     try {
-      await login(email.trim(), password);
+      if (isRegister) {
+        await register({ email, password, name, phone: phone.trim() || undefined, role });
+      } else {
+        await login(email, password);
+      }
     } catch (err: any) {
-      setError(extractErrorMessage(err));
+      setError(err?.response?.data?.detail || 'Authentication failed. Please check credentials.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleQuickLogin = async (e: string, p: string) => {
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
     try {
-      await register({
-        name: regName.trim(),
-        email: regEmail.trim(),
-        password: regPassword,
-        phone: regPhone.trim() || undefined,
-        role: 'CUSTOMER',
-      });
+      await quickLogin(e, p);
     } catch (err: any) {
-      setError(extractErrorMessage(err));
+      setError(err?.response?.data?.detail || 'Quick login failed');
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleQuick = async (demoEmail: string, demoPass: string, personaKey: string) => {
-    setError(null);
-    setSelectedPersona(personaKey);
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setIsLoading(true);
-    try {
-      await quickLogin(demoEmail, demoPass);
-    } catch (err: any) {
-      setError(extractErrorMessage(err));
-      setSelectedPersona(null);
-    } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-slate-100 p-4 sm:p-6 relative overflow-hidden">
-      {/* Background ambient lighting glow with smooth blur */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
+    <div className="min-h-screen bg-[#F7F8FA] dark:bg-[#111417] text-[#171A1F] dark:text-[#E8EAED] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative selection:bg-[#3157A6] selection:text-white transition-colors duration-150">
+      {/* Theme Toggle in top-right */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2 text-[#5F6672] hover:text-[#171A1F] dark:text-[#A7ADB5] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] rounded-xl transition-colors cursor-pointer border border-[#E2E5E9] dark:border-[#2B3138] bg-white dark:bg-[#181C20] shadow-2xs"
+          title={theme === 'light' ? 'Switch to Dark mode' : 'Switch to Light mode'}
+        >
+          {theme === 'light' ? (
+            <Moon className="w-4 h-4 text-[#5F6672]" />
+          ) : (
+            <Sun className="w-4 h-4 text-[#D19A4A]" />
+          )}
+        </button>
+      </div>
 
-      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-2xl relative z-10 space-y-6 animate-in fade-in zoom-in-95 duration-200">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-xl shadow-indigo-600/25 mb-1 hover:scale-105 transition-transform">
-            <Truck className="w-7 h-7" />
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center">
+          <div className="w-12 h-12 rounded-xl bg-[#3157A6] dark:bg-[#6D8ED4] text-white dark:text-[#111417] flex items-center justify-center shadow-md">
+            <Truck className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">
-            LastMile Flow
-          </h1>
-          <p className="text-xs text-slate-400 max-w-xs mx-auto">
-            Autonomous last-mile delivery management & dispatch tracking.
-          </p>
         </div>
+        <h2 className="mt-4 text-center text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
+          LastMile Flow
+        </h2>
+        <p className="mt-1 text-center text-xs text-[#5F6672] dark:text-[#A7ADB5]">
+          Autonomous Last-Mile Delivery & Agent Dispatch Platform
+        </p>
+      </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="bg-rose-950/50 border border-rose-800/80 p-3 rounded-xl flex items-center gap-2.5 text-xs text-rose-300 animate-in fade-in slide-in-from-top-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* ── 1. LANDING VIEW: Instant Persona Entry & Sign In ── */}
-        {authMode === 'landing' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="space-y-2">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
-                <span>Select Workspace Persona</span>
-                <span className="text-[10px] text-indigo-400 font-mono font-medium">1-Click Live Login</span>
-              </div>
-
-              {/* Customer */}
-              <button
-                type="button"
-                onClick={() => handleQuick('rohit.verma@gmail.com', 'customer123', 'customer')}
-                disabled={isLoading}
-                className="w-full p-3.5 bg-slate-950/80 hover:bg-slate-800/90 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer shadow-sm hover:shadow-md hover:shadow-indigo-950/30"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-105 transition-all">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">
-                      Customer Portal
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Create orders, dynamic rate quotes & live tracking
-                    </div>
-                  </div>
-                </div>
-                {isLoading && selectedPersona === 'customer' ? (
-                  <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
-                )}
-              </button>
-
-              {/* Agent */}
-              <button
-                type="button"
-                onClick={() => handleQuick('vikram.singh@delivery.dev', 'agent123', 'agent')}
-                disabled={isLoading}
-                className="w-full p-3.5 bg-slate-950/80 hover:bg-slate-800/90 border border-slate-800/80 hover:border-emerald-500/50 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer shadow-sm hover:shadow-md hover:shadow-emerald-950/30"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all">
-                    <Truck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">
-                      Delivery Agent
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Assigned deliveries, status dispatch & route execution
-                    </div>
-                  </div>
-                </div>
-                {isLoading && selectedPersona === 'agent' ? (
-                  <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
-                )}
-              </button>
-
-              {/* Admin */}
-              <button
-                type="button"
-                onClick={() => handleQuick('admin@lastmile.dev', 'admin123', 'admin')}
-                disabled={isLoading}
-                className="w-full p-3.5 bg-slate-950/80 hover:bg-slate-800/90 border border-slate-800/80 hover:border-amber-500/50 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer shadow-sm hover:shadow-md hover:shadow-amber-950/30"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 group-hover:scale-105 transition-all">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">
-                      Operations Admin
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Fleet overview, auto-dispatch, rate cards & zones
-                    </div>
-                  </div>
-                </div>
-                {isLoading && selectedPersona === 'admin' ? (
-                  <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
-                )}
-              </button>
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+        <div className="stripe-card rounded-2xl p-6 sm:p-8 space-y-6">
+          {/* Quick Demo Accounts */}
+          <div>
+            <div className="text-[11px] font-semibold text-[#5F6672] dark:text-[#A7ADB5] uppercase tracking-wider mb-2.5 flex items-center justify-between">
+              <span>Demo accounts</span>
+              <span className="text-[11px] text-[#3157A6] dark:text-[#6D8ED4] font-medium">Quick access</span>
             </div>
-
-            {/* Custom Sign In / Register Buttons */}
-            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setAuthMode('custom-signin');
-                  setError(null);
-                }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold py-1.5 px-2.5 rounded-lg hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                onClick={() => handleQuickLogin('admin@lastmile.dev', 'admin123')}
+                className="p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:border-[#3157A6] dark:hover:border-[#6D8ED4] text-left transition-all cursor-pointer group shadow-2xs"
               >
-                Sign In with Email
+                <ShieldCheck className="w-3.5 h-3.5 text-[#3157A6] dark:text-[#6D8ED4] mb-1" />
+                <div className="text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED]">Admin</div>
+                <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] truncate">Operations</div>
               </button>
+
               <button
                 type="button"
-                onClick={() => {
-                  setAuthMode('register');
-                  setError(null);
-                }}
-                className="text-xs text-slate-400 hover:text-slate-200 font-medium py-1.5 px-2.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                onClick={() => handleQuickLogin('rohit.verma@gmail.com', 'customer123')}
+                className="p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:border-[#3157A6] dark:hover:border-[#6D8ED4] text-left transition-all cursor-pointer group shadow-2xs"
               >
-                Create Account
+                <Package className="w-3.5 h-3.5 text-[#287A55] dark:text-[#55A878] mb-1" />
+                <div className="text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED]">Customer</div>
+                <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] truncate">Rohit (B2C)</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('vikram.singh@delivery.dev', 'agent123')}
+                className="p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:border-[#3157A6] dark:hover:border-[#6D8ED4] text-left transition-all cursor-pointer group shadow-2xs"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-[#A66A16] dark:text-[#D19A4A] mb-1" />
+                <div className="text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED]">Agent</div>
+                <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] truncate">Vikram Singh</div>
               </button>
             </div>
           </div>
-        )}
 
-        {/* ── 2. CUSTOM SIGN IN ── */}
-        {authMode === 'custom-signin' && (
-          <form className="space-y-4 animate-in fade-in duration-150" onSubmit={handleLoginSubmit}>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
-                />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#E2E5E9] dark:border-[#2B3138]" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-white dark:bg-[#181C20] text-[#8A919C] dark:text-[#737A84] font-medium">Or enter credentials</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-xl bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] text-xs text-[#B54848] dark:text-[#D56B6B] flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-lg shadow-indigo-600/25 disabled:opacity-50 mt-1 cursor-pointer"
-            >
-              {isLoading ? 'Signing In...' : 'Sign In'}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs text-slate-400">
-              <button
-                type="button"
-                onClick={() => setAuthMode('landing')}
-                className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-              >
-                ← Back to Personas
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMode('register')}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
-              >
-                Create Account
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* ── 3. REGISTER NEW CUSTOMER ── */}
-        {authMode === 'register' && (
-          <form className="space-y-3.5 animate-in fade-in duration-150" onSubmit={handleRegisterSubmit}>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+            {isRegister && (
+              <div>
+                <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">Full Name</label>
                 <input
                   type="text"
                   required
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full linear-input rounded-lg px-3 py-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
                   placeholder="Rohit Verma"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
                 />
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                <input
-                  type="email"
-                  required
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="rohit.verma@example.com"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mobile Phone (For SMS Tracking)</label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+            {isRegister && (
+              <div>
+                <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">
+                  Mobile Number <span className="text-[#8A919C] text-[10px] font-normal">(for SMS alerts)</span>
+                </label>
                 <input
                   type="tel"
-                  value={regPhone}
-                  onChange={(e) => setRegPhone(e.target.value)}
+                  value={phone}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) {
+                      setPhone('+91');
+                    } else if (!val.startsWith('+')) {
+                      setPhone('+91' + val.replace(/\D/g, ''));
+                    } else {
+                      setPhone(val);
+                    }
+                  }}
+                  className="w-full linear-input rounded-lg px-3 py-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none font-mono"
                   placeholder="+91 98765 43210"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono"
                 />
               </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">Email Address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full linear-input rounded-lg px-3 py-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
+                placeholder="rohit.verma@gmail.com"
+              />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                <input
-                  type="password"
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
-                />
-              </div>
+              <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full linear-input rounded-lg px-3 py-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none"
+                placeholder="••••••••"
+              />
             </div>
+
+            {isRegister && (
+              <div>
+                <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">Account Type</label>
+                <select
+                  value={role}
+                  onChange={(e: any) => setRole(e.target.value)}
+                  className="w-full linear-input rounded-lg px-3 py-2 text-xs text-[#171A1F] dark:text-[#E8EAED] focus:outline-none cursor-pointer"
+                >
+                  <option value="CUSTOMER">Customer (Shipment Creator)</option>
+                  <option value="AGENT">Delivery Courier (Agent)</option>
+                </select>
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-lg shadow-indigo-600/25 disabled:opacity-50 mt-2 cursor-pointer"
+              disabled={loading}
+              className="w-full stripe-btn-primary py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              {isLoading ? 'Creating Account...' : 'Register as Customer'}
-              <ArrowRight className="w-4 h-4" />
+              {loading ? (
+                <span>Authenticating...</span>
+              ) : (
+                <>
+                  <span>{isRegister ? 'Create Account' : 'Sign In'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
-
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs text-slate-400">
-              <button
-                type="button"
-                onClick={() => setAuthMode('landing')}
-                className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-              >
-                ← Back to Personas
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMode('custom-signin')}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
-              >
-                Sign In Instead
-              </button>
-            </div>
           </form>
-        )}
 
-        {/* Footer info */}
-        <div className="pt-2 text-center text-[11px] text-slate-500">
-          Real-time order tracking · Automated assignment · Delivery lifecycle management
+          <div className="text-center pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setError(null);
+              }}
+              className="text-xs text-[#3157A6] dark:text-[#6D8ED4] hover:text-[#284A91] dark:hover:text-[#819DDE] font-semibold transition-colors cursor-pointer"
+            >
+              {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

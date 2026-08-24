@@ -7,102 +7,121 @@ interface Props {
   showPulse?: boolean;
 }
 
-const statusConfig: Record<string, { bg: string; text: string; border: string; dot: string; label: string; isLive?: boolean }> = {
+const statusConfig: Record<
+  string,
+  {
+    bg: string;
+    text: string;
+    border: string;
+    dot: string;
+    label: string;
+    isLive?: boolean;
+  }
+> = {
   CREATED: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-400',
-    border: 'border-amber-500/30',
-    dot: 'bg-amber-400',
-    label: 'Created / Pending',
+    // neutral / slate
+    bg: 'bg-[#F1F3F5] dark:bg-[#1E2328]',
+    text: 'text-[#5F6672] dark:text-[#A7ADB5]',
+    border: 'border-[#E2E5E9] dark:border-[#2B3138]',
+    dot: 'bg-[#8A919C] dark:bg-[#737A84]',
+    label: 'Created',
     isLive: true,
   },
   ASSIGNED: {
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-400',
-    border: 'border-blue-500/30',
-    dot: 'bg-blue-400',
-    label: 'Assigned to Agent',
+    // blue (#3157A6 / #6D8ED4)
+    bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
+    text: 'text-[#3157A6] dark:text-[#6D8ED4]',
+    border: 'border-[#D0DEF2] dark:border-[#25354E]',
+    dot: 'bg-[#3157A6] dark:bg-[#6D8ED4]',
+    label: 'Assigned',
     isLive: true,
   },
   PICKED_UP: {
-    bg: 'bg-indigo-500/10',
-    text: 'text-indigo-400',
-    border: 'border-indigo-500/30',
-    dot: 'bg-indigo-400',
+    // blue (#3157A6 / #6D8ED4)
+    bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
+    text: 'text-[#3157A6] dark:text-[#6D8ED4]',
+    border: 'border-[#D0DEF2] dark:border-[#25354E]',
+    dot: 'bg-[#3157A6] dark:bg-[#6D8ED4]',
     label: 'Picked Up',
     isLive: true,
   },
   IN_TRANSIT: {
-    bg: 'bg-cyan-500/10',
-    text: 'text-cyan-400',
-    border: 'border-cyan-500/30',
-    dot: 'bg-cyan-400',
+    // blue (#3157A6 / #6D8ED4)
+    bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
+    text: 'text-[#3157A6] dark:text-[#6D8ED4]',
+    border: 'border-[#D0DEF2] dark:border-[#25354E]',
+    dot: 'bg-[#3157A6] dark:bg-[#6D8ED4]',
     label: 'In Transit',
     isLive: true,
   },
   OUT_FOR_DELIVERY: {
-    bg: 'bg-purple-500/10',
-    text: 'text-purple-400',
-    border: 'border-purple-500/30',
-    dot: 'bg-purple-400',
+    // blue (#3157A6 / #6D8ED4)
+    bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
+    text: 'text-[#3157A6] dark:text-[#6D8ED4]',
+    border: 'border-[#D0DEF2] dark:border-[#25354E]',
+    dot: 'bg-[#3157A6] dark:bg-[#6D8ED4]',
     label: 'Out for Delivery',
     isLive: true,
   },
   DELIVERED: {
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    border: 'border-emerald-500/30',
-    dot: 'bg-emerald-400',
+    // green (#287A55 / #55A878)
+    bg: 'bg-[#EAF5F0] dark:bg-[#16271E]',
+    text: 'text-[#287A55] dark:text-[#55A878]',
+    border: 'border-[#C8E5D6] dark:border-[#203D2E]',
+    dot: 'bg-[#287A55] dark:bg-[#55A878]',
     label: 'Delivered',
   },
   FAILED: {
-    bg: 'bg-rose-500/10',
-    text: 'text-rose-400',
-    border: 'border-rose-500/30',
-    dot: 'bg-rose-400',
-    label: 'Delivery Failed',
+    // red (#B54848 / #D56B6B)
+    bg: 'bg-[#FAF0F0] dark:bg-[#2B1717]',
+    text: 'text-[#B54848] dark:text-[#D56B6B]',
+    border: 'border-[#F2D0D0] dark:border-[#432323]',
+    dot: 'bg-[#B54848] dark:bg-[#D56B6B]',
+    label: 'Failed',
   },
   RESCHEDULED: {
-    bg: 'bg-orange-500/10',
-    text: 'text-orange-400',
-    border: 'border-orange-500/30',
-    dot: 'bg-orange-400',
+    // amber / warning (#A66A16 / #D19A4A)
+    bg: 'bg-[#FAF3E8] dark:bg-[#292014]',
+    text: 'text-[#A66A16] dark:text-[#D19A4A]',
+    border: 'border-[#F2DEBF] dark:border-[#42321D]',
+    dot: 'bg-[#A66A16] dark:bg-[#D19A4A]',
     label: 'Rescheduled',
     isLive: true,
   },
   CANCELLED: {
-    bg: 'bg-slate-800/80',
-    text: 'text-slate-400',
-    border: 'border-slate-700/80',
-    dot: 'bg-slate-500',
+    // neutral / slate
+    bg: 'bg-[#F1F3F5] dark:bg-[#1E2328]',
+    text: 'text-[#5F6672] dark:text-[#737A84]',
+    border: 'border-[#E2E5E9] dark:border-[#2B3138]',
+    dot: 'bg-[#8A919C] dark:bg-[#737A84]',
     label: 'Cancelled',
   },
 };
 
 export const StatusBadge: React.FC<Props> = ({ status, size = 'md', showPulse = true }) => {
   const config = statusConfig[status] || {
-    bg: 'bg-slate-800/80',
-    text: 'text-slate-300',
-    border: 'border-slate-700/80',
-    dot: 'bg-slate-400',
+    bg: 'bg-[#F1F3F5] dark:bg-[#1E2328]',
+    text: 'text-[#5F6672] dark:text-[#737A84]',
+    border: 'border-[#E2E5E9] dark:border-[#2B3138]',
+    dot: 'bg-[#8A919C] dark:bg-[#737A84]',
     label: status,
   };
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-[11px]',
-    md: 'px-2.5 py-1 text-xs font-semibold',
-    lg: 'px-3.5 py-1.5 text-sm font-bold',
+    sm: 'px-2 py-0.5 text-[10px] tracking-tight font-mono font-medium',
+    md: 'px-2.5 py-0.5 text-[11px] tracking-tight font-mono font-semibold',
+    lg: 'px-3 py-1 text-xs font-mono font-semibold',
   };
 
   const dotSizes = {
     sm: 'w-1.5 h-1.5',
-    md: 'w-2 h-2',
-    lg: 'w-2.5 h-2.5',
+    md: 'w-1.5 h-1.5',
+    lg: 'w-2 h-2',
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border ${config.bg} ${config.text} ${config.border} ${sizeClasses[size]} backdrop-blur-sm shadow-sm transition-all`}
+      className={`inline-flex items-center gap-1.5 rounded-md border ${config.bg} ${config.text} ${config.border} ${sizeClasses[size]} select-none shrink-0 transition-colors`}
     >
       <span className="relative flex items-center justify-center">
         {showPulse && config.isLive && (
