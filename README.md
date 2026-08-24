@@ -154,11 +154,25 @@ These are seeded demonstration accounts intended only for evaluation.
 - **CI/CD**: GitHub Actions, Docker Compose, Render Blueprint
 - **Notifications**: Console provider (local) + Resend email provider (production)
 
+## Product Screenshots
+
+| 1. Dynamic Pricing Preview | 2. Immediate Auto-Assignment |
+|:---:|:---:|
+| ![Customer Pricing](docs/assets/customer-pricing.png) | ![Auto Assignment](docs/assets/auto-assignment.png) |
+| *Real-time volumetric & COD calculation* | *Nearest-agent Haversine dispatch* |
+
+| 3. Operations Dashboard | 4. Complete Audit Timeline |
+|:---:|:---:|
+| ![Admin Dashboard](docs/assets/admin-dashboard.png) | ![Tracking Timeline](docs/assets/tracking-timeline.png) |
+| *Fleet load & status pipeline* | *Immutable lifecycle history* |
+
+> **Screenshot Capture**: Capture instructions are documented in [docs/screenshot-plan.md](docs/screenshot-plan.md).
+
 ---
 
 ## Rate Calculation Engine
 
-Pricing is 100% database-driven and adheres to courier industry standards.
+Pricing is fully database-driven and follows the calculation rules defined by the assignment.
 
 ### 1. Volumetric Weight
 

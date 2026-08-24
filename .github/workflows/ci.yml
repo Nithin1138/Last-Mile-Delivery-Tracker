@@ -11,7 +11,7 @@ jobs:
   # 1. Backend Automated Testing & Lint
   # ---------------------------------------------------------------------------
   backend-tests:
-    name: Backend Test Suite (73 Tests)
+    name: Backend Test Suite
     runs-on: ubuntu-latest
 
     services:

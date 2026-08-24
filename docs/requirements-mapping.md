@@ -45,7 +45,7 @@ This document provides a 1-to-1 mapping from every graded requirement in the ass
 | **Explicit State Machine Matrix** | [`backend/app/services/order_lifecycle.py`](../backend/app/services/order_lifecycle.py) | `POST /api/orders/{id}/status` | `tests/test_order_lifecycle.py::test_transition_validation_matrix` | `AgentDashboard.tsx` |
 | **Append-Only Immutable Timeline** | [`backend/app/services/order_lifecycle.py`](../backend/app/services/order_lifecycle.py) | `GET /api/orders/{id}/timeline` | `tests/test_order_lifecycle.py::test_order_transition_and_history_creation` | `OrderTimeline.tsx` |
 | **First-Class Delivery Attempts** | [`backend/app/services/order_lifecycle.py`](../backend/app/services/order_lifecycle.py) | `GET /api/orders/{id}/attempts` | `tests/test_order_lifecycle.py::test_delivery_attempts_tracking` | `DeliveryAttemptsList.tsx` |
-| **Failed Delivery & Rescheduling Flow** | [`backend/app/api/orders.py`](../backend/app/api/orders.py) | `POST /api/orders/{id}/reschedule` | `tests/test_order_lifecycle.py` | `OrderDetailModal.tsx` |
+| **Failed Delivery & Rescheduling Flow** | [`backend/app/api/orders.py`](../backend/app/api/orders.py) | `POST /api/orders/{id}/reschedule` | `tests/test_failed_delivery_flow.py::test_complete_failed_delivery_reschedule_and_reassign` | `OrderDetailModal.tsx` |
 
 ---
 

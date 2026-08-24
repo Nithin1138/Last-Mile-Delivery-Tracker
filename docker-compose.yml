@@ -36,7 +36,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/delivery_tracker
-      JWT_SECRET_KEY: production-grade-32-character-secret-key-lastmile
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-development-only-change-me}
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 480
       CORS_ORIGINS: "http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1"

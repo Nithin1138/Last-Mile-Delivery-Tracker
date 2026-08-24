@@ -27,7 +27,7 @@ This runbook outlines operational procedures, system observability, failure mode
   │   └── Atomic Rescheduling & Agent Reassignment Flow
   │
   └── Persistence & Event Subsystems
-      ├── PostgreSQL 18 (ACID, Pessimistic Row-Locking, Database Triggers)
+      ├── PostgreSQL 16 (ACID, Pessimistic Row-Locking, Database Triggers)
       └── Transactional Notification Hub (Resend API Gateway / Console Fallback)
 ```
 
