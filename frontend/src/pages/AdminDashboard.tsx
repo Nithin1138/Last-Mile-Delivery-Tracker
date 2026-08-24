@@ -88,19 +88,19 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
 
       {/* Action Banner for Urgent Dispatches */}
       {unassignedCount > 0 && (
-        <div className="bg-gradient-to-r from-[#FAF3E8] to-[#F1F3F5] dark:from-[#292014] dark:to-[#181C20] border border-[#F2DEBF] dark:border-[#42321D] p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+        <div className="bg-[#FAF3E8] dark:bg-[#292014] border border-[#F2DEBF] dark:border-[#42321D] p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-[#FAF3E8] dark:bg-[#292014] text-[#A66A16] dark:text-[#D19A4A] border border-[#F2DEBF] dark:border-[#42321D]">
+            <div className="p-2 rounded-xl bg-[#F2DEBF] dark:bg-[#42321D] text-[#A66A16] dark:text-[#D19A4A]">
               <Compass className="w-4 h-4" />
             </div>
             <div>
               <div className="font-bold text-xs text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-1.5">
                 <span>Dispatch Attention Required:</span>
-                <span className="font-mono text-[#A66A16] dark:text-[#D19A4A] bg-[#FAF3E8] dark:bg-[#292014] px-1.5 py-0.2 rounded border border-[#F2DEBF] dark:border-[#42321D]">
+                <span className="font-mono text-[#A66A16] dark:text-[#D19A4A] bg-white dark:bg-[#181C20] px-1.5 py-0.5 rounded border border-[#F2DEBF] dark:border-[#42321D]">
                   {unassignedCount} shipment{unassignedCount > 1 ? 's' : ''} awaiting courier assignment
                 </span>
               </div>
-              <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
+              <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
                 Automated assignment engine can match nearest available couriers immediately.
               </p>
             </div>
@@ -108,7 +108,7 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
 
           <button
             onClick={onNavigateToOrders}
-            className="stripe-btn-primary text-xs py-2 px-3.5 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
+            className="stripe-btn-primary text-xs py-2 px-3.5 rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
           >
             <Zap className="w-3.5 h-3.5" />
             <span>Open Dispatch Queue</span>
@@ -121,7 +121,7 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigateToOrders }) => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
-              Operations Control Center
+              Operations Dashboard
             </h1>
             <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E] px-2 py-0.5 rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-[#287A55] dark:bg-[#55A878] animate-pulse" />

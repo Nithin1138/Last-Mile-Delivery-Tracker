@@ -14,7 +14,6 @@ import {
   CheckCircle2, 
   RefreshCw, 
   X, 
-  Sparkles, 
   SlidersHorizontal,
   ArrowUpRight,
   Zap,

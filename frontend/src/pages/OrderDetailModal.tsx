@@ -18,7 +18,6 @@ import {
   History, 
   X, 
   Truck,
-  Sparkles,
   ExternalLink,
   ShieldCheck,
   User,

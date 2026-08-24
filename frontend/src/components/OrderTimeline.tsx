@@ -1,7 +1,7 @@
 import React from 'react';
 import { TimelineEntry } from '../types';
 import { StatusBadge } from './StatusBadge';
-import { CheckCircle2, Circle, Clock, ShieldCheck, User, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, ShieldCheck, User } from 'lucide-react';
 
 interface Props {
   entries: TimelineEntry[];

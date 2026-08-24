@@ -8,7 +8,6 @@ import {
   Plus, 
   RefreshCw, 
   X, 
-  Sparkles, 
   MapPin, 
   ShieldCheck,
   Search,

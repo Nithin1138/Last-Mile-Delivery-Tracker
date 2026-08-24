@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { adminApi, extractErrorMessage } from '../api/client';
 import { Zone, Area } from '../types';
-import { Map, Plus, RefreshCw, X, Sparkles, MapPin, Search } from 'lucide-react';
+import { Map, Plus, RefreshCw, X, MapPin, Search } from 'lucide-react';
 
 export const AdminZonesPage: React.FC = () => {
   const [zones, setZones] = useState<Zone[]>([]);

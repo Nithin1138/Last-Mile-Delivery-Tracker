@@ -10,7 +10,6 @@ import {
   Map, 
   CreditCard, 
   LogOut, 
-  Sparkles, 
   User as UserIcon,
   Plus,
   Sun,
@@ -84,15 +83,11 @@ export const Navbar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
 
   return (
     <header className="bg-white/90 dark:bg-[#181C20]/90 border-b border-[#E2E5E9] dark:border-[#2B3138] backdrop-blur-xl sticky top-0 z-40 transition-colors">
-      {/* Top Banner: Quick Demo Persona Switcher (Subtle restrained strip) */}
+      {/* Top Banner: Evaluation Shortcuts (Subtle restrained strip) */}
       {isDemoMode && (
         <div className="bg-[#F1F3F5] dark:bg-[#1E2328] border-b border-[#E2E5E9] dark:border-[#2B3138] px-4 sm:px-8 py-1.5 text-xs flex flex-wrap items-center justify-between gap-2 transition-colors">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E] px-2 py-0.5 rounded-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#3157A6] dark:bg-[#6D8ED4] animate-pulse" />
-              Demo Roles
-            </span>
-            <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] hidden sm:inline">1-Click Persona Switcher:</span>
+            <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-semibold">Evaluation shortcuts:</span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">

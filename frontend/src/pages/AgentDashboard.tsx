@@ -14,14 +14,13 @@ import {
   Clock, 
   RefreshCw, 
   X, 
-  Sparkles, 
-  AlertTriangle,
   Play,
   RotateCcw,
   Navigation,
   Phone,
   Package,
-  Zap
+  Zap,
+  Check
 } from 'lucide-react';
 
 export const AgentDashboard: React.FC = () => {
@@ -150,7 +149,7 @@ export const AgentDashboard: React.FC = () => {
             <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
               Courier Dispatch Dashboard
             </h1>
-            <span className="text-[10px] font-mono text-[#5F6672] dark:text-[#A7ADB5] bg-[#F1F3F5] dark:bg-[#1E2328] px-2 py-0.5 rounded border border-[#E2E5E9] dark:border-[#2B3138]">
+            <span className="text-xs font-mono text-[#5F6672] dark:text-[#A7ADB5] bg-[#F1F3F5] dark:bg-[#1E2328] px-2 py-0.5 rounded border border-[#E2E5E9] dark:border-[#2B3138]">
               {user?.name}
             </span>
           </div>
@@ -219,18 +218,18 @@ export const AgentDashboard: React.FC = () => {
 
       {/* Featured Current Priority Task Card */}
       {activeHeroOrder && (
-        <div className="bg-gradient-to-r from-[#3157A6]/10 via-[#F7F8FA] to-transparent dark:from-[#6D8ED4]/15 dark:via-[#181C20] dark:to-transparent border border-[#3157A6]/30 dark:border-[#6D8ED4]/40 rounded-2xl p-6 space-y-4 shadow-sm animate-in fade-in">
+        <div className="stripe-card rounded-2xl p-6 space-y-4 shadow-sm animate-in fade-in border-l-4 border-l-[#3157A6] dark:border-l-[#6D8ED4]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-[#3157A6] dark:bg-[#6D8ED4] text-white dark:text-[#111417]">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-lg bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
                 <Zap className="w-4 h-4" />
               </span>
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-[#171A1F] dark:text-[#E8EAED]">
                   Active Priority Task · Next Stop
                 </span>
-                <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-mono">
-                  Order #{activeHeroOrder.id.slice(0, 8)} ({activeHeroOrder.payment_type} · ₹{activeHeroOrder.total_charge.toFixed(2)})
+                <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5]">
+                  Order <span className="font-mono font-bold text-[#171A1F] dark:text-[#E8EAED]">#{activeHeroOrder.id.slice(0, 8)}</span> ({activeHeroOrder.payment_type} · ₹{activeHeroOrder.total_charge.toFixed(2)})
                 </div>
               </div>
             </div>
@@ -241,7 +240,7 @@ export const AgentDashboard: React.FC = () => {
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-bold text-[#8A919C] dark:text-[#737A84] block">Deliver To</span>
               <div className="text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">{activeHeroOrder.drop_address}</div>
-              <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5] font-mono">PIN: {activeHeroOrder.drop_pincode} ({activeHeroOrder.drop_zone_name || 'Zone'})</div>
+              <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5]">PIN <span className="font-mono font-semibold">{activeHeroOrder.drop_pincode}</span> ({activeHeroOrder.drop_zone_name || 'Destination'})</div>
             </div>
 
             <div className="flex items-center justify-end gap-2 flex-wrap">
@@ -255,9 +254,9 @@ export const AgentDashboard: React.FC = () => {
                       setTargetStatus(action.next);
                       setActionReason('');
                     }}
-                    className={`${action.color} py-2.5 px-5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md`}
+                    className={`${action.color} py-2 px-4 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-xs`}
                   >
-                    <Play className="w-4 h-4 fill-current" />
+                    <Play className="w-3.5 h-3.5 fill-current" />
                     <span>{action.label}</span>
                   </button>
                 );
@@ -270,10 +269,10 @@ export const AgentDashboard: React.FC = () => {
                   setFailureReason('CUSTOMER_UNAVAILABLE');
                   setActionReason('');
                 }}
-                className="py-2.5 px-3 rounded-xl bg-[#FAF0F0] dark:bg-[#2B1717] hover:bg-[#F2D0D0] dark:hover:bg-[#432323] text-[#B54848] dark:text-[#D56B6B] border border-[#F2D0D0] dark:border-[#432323] transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5"
+                className="py-2 px-3 rounded-xl bg-[#FAF0F0] dark:bg-[#2B1717] hover:bg-[#F2D0D0] dark:hover:bg-[#432323] text-[#B54848] dark:text-[#D56B6B] border border-[#F2D0D0] dark:border-[#432323] transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5"
                 title="Record Delivery Issue"
               >
-                <ShieldAlert className="w-4 h-4" />
+                <ShieldAlert className="w-3.5 h-3.5" />
                 <span>Report Issue</span>
               </button>
             </div>
@@ -301,27 +300,29 @@ export const AgentDashboard: React.FC = () => {
         {loading ? (
           <div className="p-12 text-center text-[#8A919C] dark:text-[#737A84] text-xs stripe-card rounded-2xl flex flex-col items-center justify-center gap-3">
             <div className="w-5 h-5 border-2 border-[#3157A6] dark:border-[#6D8ED4] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[11px]">Loading active shipments...</span>
+            <span className="text-xs">Loading active shipments...</span>
           </div>
         ) : error ? (
           <div className="p-6 bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] rounded-2xl text-[#B54848] dark:text-[#D56B6B] text-xs">
             {error}
           </div>
         ) : orders.length === 0 ? (
-          <div className="py-7 px-6 text-center text-[#5F6672] dark:text-[#A7ADB5] bg-white dark:bg-[#181C20] rounded-2xl flex flex-col items-center justify-center gap-2 max-w-sm mx-auto border border-[#E2E5E9] dark:border-[#2B3138] shadow-xs animate-in fade-in">
-            <div className="w-9 h-9 rounded-full bg-[#EBF1FA] dark:bg-[#182232] flex items-center justify-center text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
-              <Truck className="w-4 h-4" />
+          <div className="min-h-[250px] max-h-[320px] p-6 text-center bg-white dark:bg-[#181C20] rounded-2xl flex flex-col items-center justify-center gap-3 max-w-md mx-auto border border-[#E2E5E9] dark:border-[#2B3138] shadow-xs animate-in fade-in">
+            <div className="w-10 h-10 rounded-full bg-[#F1F3F5] dark:bg-[#1E2328] flex items-center justify-center text-[#5F6672] dark:text-[#A7ADB5] border border-[#E2E5E9] dark:border-[#2B3138]">
+              <Truck className="w-5 h-5" />
             </div>
-            <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">Queue is clear</div>
-            <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] max-w-xs leading-normal">
-              No shipments currently assigned. Dispatches will appear here automatically.
-            </p>
+            <div className="space-y-1">
+              <div className="text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">Queue is clear</div>
+              <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] max-w-xs leading-relaxed">
+                No deliveries are currently assigned. New assignments will appear here automatically.
+              </p>
+            </div>
             <button
               onClick={() => fetchOrders()}
-              className="mt-1 stripe-btn-secondary px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="mt-1 bg-[#F1F3F5] dark:bg-[#1E2328] hover:bg-[#E2E5E9] dark:hover:bg-[#2B3138] text-[#171A1F] dark:text-[#E8EAED] border border-[#E2E5E9] dark:border-[#2B3138] px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
             >
-              <RefreshCw className="w-3 h-3" />
-              <span>Check for New Assignments</span>
+              <RefreshCw className="w-3.5 h-3.5 text-[#5F6672] dark:text-[#A7ADB5]" />
+              <span>Refresh Queue</span>
             </button>
           </div>
         ) : (
@@ -353,7 +354,7 @@ export const AgentDashboard: React.FC = () => {
                         <div>
                           <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] uppercase font-bold">Pickup Origin</div>
                           <div className="text-[#171A1F] dark:text-[#E8EAED] font-medium">{order.pickup_address}</div>
-                          <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[10px]"><span className="font-mono">PIN {order.pickup_pincode}</span></div>
+                          <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px]"><span className="font-mono">PIN {order.pickup_pincode}</span></div>
                         </div>
                       </div>
 
@@ -362,18 +363,18 @@ export const AgentDashboard: React.FC = () => {
                         <div>
                           <div className="text-[10px] text-[#8A919C] dark:text-[#737A84] uppercase font-bold">Delivery Drop</div>
                           <div className="text-[#171A1F] dark:text-[#E8EAED] font-semibold">{order.drop_address}</div>
-                          <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[10px]"><span className="font-mono">PIN {order.drop_pincode}</span> ({order.drop_zone_name || 'Zone'})</div>
+                          <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px]"><span className="font-mono">PIN {order.drop_pincode}</span> ({order.drop_zone_name || 'Zone'})</div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-[#F1F3F5] dark:bg-[#1E2328] p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-[#F1F3F5] dark:bg-[#1E2328] p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
                       <div>
-                        <span className="text-[#8A919C] dark:text-[#737A84] block text-[9px] uppercase font-semibold">Payment</span>
+                        <span className="text-[#8A919C] dark:text-[#737A84] block text-[10px] uppercase font-semibold">Payment</span>
                         <strong className="text-[#171A1F] dark:text-[#E8EAED]">{order.payment_type}</strong>
                       </div>
                       <div>
-                        <span className="text-[#8A919C] dark:text-[#737A84] block text-[9px] uppercase font-semibold">Amount</span>
+                        <span className="text-[#8A919C] dark:text-[#737A84] block text-[10px] uppercase font-semibold">Amount</span>
                         <strong className="text-[#287A55] dark:text-[#55A878] font-bold">₹{order.total_charge.toFixed(2)}</strong>
                       </div>
                     </div>
@@ -407,7 +408,7 @@ export const AgentDashboard: React.FC = () => {
                         title="Record Delivery Issue"
                       >
                         <ShieldAlert className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-semibold">Issue</span>
+                        <span className="text-xs font-semibold">Issue</span>
                       </button>
                     )}
                   </div>
@@ -429,7 +430,7 @@ export const AgentDashboard: React.FC = () => {
                 ) : (
                   <CheckCircle2 className="w-4 h-4 text-[#3157A6] dark:text-[#6D8ED4]" />
                 )}
-                Confirm Status: {targetStatus}
+                {targetStatus === 'FAILED' ? 'Report Delivery Issue' : `Confirm Status: ${targetStatus}`}
               </div>
               <button
                 type="button"
@@ -441,14 +442,14 @@ export const AgentDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-1 bg-[#F1F3F5] dark:bg-[#1E2328] p-3 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
-              <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Order: <strong className="text-[#171A1F] dark:text-[#E8EAED] font-mono">#{actionOrder.id.slice(0, 8)}</strong></div>
-              <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Destination: <strong className="text-[#171A1F] dark:text-[#E8EAED]">{actionOrder.drop_address}</strong></div>
+              <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5]">Order: <strong className="text-[#171A1F] dark:text-[#E8EAED] font-mono">#{actionOrder.id.slice(0, 8)}</strong></div>
+              <div className="text-xs text-[#5F6672] dark:text-[#A7ADB5]">Destination: <strong className="text-[#171A1F] dark:text-[#E8EAED]">{actionOrder.drop_address}</strong></div>
             </div>
 
             {targetStatus === 'FAILED' ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Primary Issue Reason</label>
+                  <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-xs">Failure Reason</label>
                   <select
                     value={failureReason}
                     onChange={(e) => setFailureReason(e.target.value)}
@@ -463,7 +464,7 @@ export const AgentDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Field Notes (Optional)</label>
+                  <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-xs">Optional Notes</label>
                   <textarea
                     rows={2}
                     value={actionReason}
@@ -473,13 +474,13 @@ export const AgentDashboard: React.FC = () => {
                   />
                 </div>
 
-                <div className="bg-[#FAF3E8] dark:bg-[#292014] border border-[#F2DEBF] dark:border-[#42321D] p-2.5 rounded-lg text-[#A66A16] dark:text-[#D19A4A] text-[11px] leading-relaxed">
-                  <strong>Automated Rescheduling:</strong> This failure attempt triggers an automated reschedule workflow and dispatches a notification to the customer.
+                <div className="bg-[#FAF3E8] dark:bg-[#292014] border border-[#F2DEBF] dark:border-[#42321D] p-2.5 rounded-lg text-[#A66A16] dark:text-[#D19A4A] text-xs leading-relaxed">
+                  <strong>Automated Rescheduling:</strong> Recording this failure frees the current courier, moves the order to rescheduled status, and triggers a customer notification.
                 </div>
               </div>
             ) : (
               <div>
-                <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-[11px]">Delivery Confirmation Notes (Optional)</label>
+                <label className="block text-[#171A1F] dark:text-[#E8EAED] mb-1 font-semibold text-xs">Delivery Confirmation Notes (Optional)</label>
                 <input
                   type="text"
                   value={actionReason}
@@ -505,7 +506,7 @@ export const AgentDashboard: React.FC = () => {
                   targetStatus === 'FAILED' ? 'bg-[#B54848] hover:bg-[#8F3939] text-white font-semibold' : 'stripe-btn-primary'
                 }`}
               >
-                {actionSubmitting ? 'Updating...' : `Confirm ${targetStatus}`}
+                {actionSubmitting ? 'Updating...' : targetStatus === 'FAILED' ? 'Confirm Failed Delivery' : `Confirm ${targetStatus}`}
               </button>
             </div>
           </form>

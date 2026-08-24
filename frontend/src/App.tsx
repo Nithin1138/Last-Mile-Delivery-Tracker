@@ -1,30 +1,18 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 import { Navbar } from './components/Navbar';
-
-// Lazy-load page components — each becomes a separate JS chunk
-const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
-const AgentDashboard = lazy(() => import('./pages/AgentDashboard').then(m => ({ default: m.AgentDashboard })));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const AdminOrdersPage = lazy(() => import('./pages/AdminOrdersPage').then(m => ({ default: m.AdminOrdersPage })));
-const AdminAgentsPage = lazy(() => import('./pages/AdminAgentsPage').then(m => ({ default: m.AdminAgentsPage })));
-const AdminZonesPage = lazy(() => import('./pages/AdminZonesPage').then(m => ({ default: m.AdminZonesPage })));
-const AdminRateCardsPage = lazy(() => import('./pages/AdminRateCardsPage').then(m => ({ default: m.AdminRateCardsPage })));
-const OrderCreatePage = lazy(() => import('./pages/OrderCreatePage').then(m => ({ default: m.OrderCreatePage })));
-const OrderDetailModal = lazy(() => import('./pages/OrderDetailModal').then(m => ({ default: m.OrderDetailModal })));
-
-/** Full-screen shimmer shown while a lazy chunk is loading */
-const PageShimmer: React.FC = () => (
-  <div className="flex-1 p-8 space-y-4 max-w-7xl mx-auto w-full">
-    <div className="skeleton h-8 w-48 mb-6" />
-    <div className="skeleton h-32 w-full rounded-2xl" />
-    <div className="skeleton h-32 w-full rounded-2xl" />
-    <div className="skeleton h-32 w-full rounded-2xl" />
-  </div>
-);
+import { Login } from './pages/Login';
+import { CustomerDashboard } from './pages/CustomerDashboard';
+import { AgentDashboard } from './pages/AgentDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminOrdersPage } from './pages/AdminOrdersPage';
+import { AdminAgentsPage } from './pages/AdminAgentsPage';
+import { AdminZonesPage } from './pages/AdminZonesPage';
+import { AdminRateCardsPage } from './pages/AdminRateCardsPage';
+import { OrderCreatePage } from './pages/OrderCreatePage';
+import { OrderDetailModal } from './pages/OrderDetailModal';
 
 const MainApp: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -48,11 +36,7 @@ const MainApp: React.FC = () => {
   }
 
   if (!isAuthenticated || !user) {
-    return (
-      <Suspense fallback={<div className="min-h-screen bg-[#F7F8FA] dark:bg-[#111417]" />}>
-        <Login />
-      </Suspense>
-    );
+    return <Login />;
   }
 
   const handleOrderCreated = (orderId: string) => {
@@ -65,53 +49,49 @@ const MainApp: React.FC = () => {
       <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
       <main className="flex-1 pb-16">
-        <Suspense fallback={<PageShimmer />}>
-          {/* CUSTOMER PORTAL */}
-          {user.role === 'CUSTOMER' && (
-            <div key={currentTab} className="page-enter">
-              {currentTab === 'create-order' ? (
-                <OrderCreatePage onOrderCreated={handleOrderCreated} />
-              ) : (
-                <CustomerDashboard onCreateOrderClick={() => setCurrentTab('create-order')} />
-              )}
-            </div>
-          )}
+        {/* CUSTOMER PORTAL */}
+        {user.role === 'CUSTOMER' && (
+          <div key={currentTab} className="page-enter">
+            {currentTab === 'create-order' ? (
+              <OrderCreatePage onOrderCreated={handleOrderCreated} />
+            ) : (
+              <CustomerDashboard onCreateOrderClick={() => setCurrentTab('create-order')} />
+            )}
+          </div>
+        )}
 
-          {/* AGENT PORTAL */}
-          {user.role === 'AGENT' && (
-            <div key={currentTab} className="page-enter">
-              <AgentDashboard />
-            </div>
-          )}
+        {/* AGENT PORTAL */}
+        {user.role === 'AGENT' && (
+          <div key={currentTab} className="page-enter">
+            <AgentDashboard />
+          </div>
+        )}
 
-          {/* ADMIN PORTAL */}
-          {user.role === 'ADMIN' && (
-            <div key={currentTab} className="page-enter">
-              {currentTab === 'dashboard' && (
-                <AdminDashboard onNavigateToOrders={() => setCurrentTab('orders')} />
-              )}
-              {currentTab === 'orders' && (
-                <AdminOrdersPage />
-              )}
-              {currentTab === 'create-order' && (
-                <OrderCreatePage onOrderCreated={handleOrderCreated} />
-              )}
-              {currentTab === 'agents' && <AdminAgentsPage />}
-              {currentTab === 'zones' && <AdminZonesPage />}
-              {currentTab === 'rate-cards' && <AdminRateCardsPage />}
-            </div>
-          )}
-        </Suspense>
+        {/* ADMIN PORTAL */}
+        {user.role === 'ADMIN' && (
+          <div key={currentTab} className="page-enter">
+            {currentTab === 'dashboard' && (
+              <AdminDashboard onNavigateToOrders={() => setCurrentTab('orders')} />
+            )}
+            {currentTab === 'orders' && (
+              <AdminOrdersPage />
+            )}
+            {currentTab === 'create-order' && (
+              <OrderCreatePage onOrderCreated={handleOrderCreated} />
+            )}
+            {currentTab === 'agents' && <AdminAgentsPage />}
+            {currentTab === 'zones' && <AdminZonesPage />}
+            {currentTab === 'rate-cards' && <AdminRateCardsPage />}
+          </div>
+        )}
       </main>
 
       {/* Global Order Detail Modal when triggered */}
       {selectedOrderId && (
-        <Suspense fallback={null}>
-          <OrderDetailModal
-            orderId={selectedOrderId}
-            onClose={() => setSelectedOrderId(null)}
-          />
-        </Suspense>
+        <OrderDetailModal
+          orderId={selectedOrderId}
+          onClose={() => setSelectedOrderId(null)}
+        />
       )}
 
       {/* Footer */}

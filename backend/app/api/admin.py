@@ -578,30 +578,32 @@ def get_dashboard(
     # Total orders
     total_orders = db.query(func.count(Order.id)).scalar()
 
-    # Average delivery time (for delivered orders)
+    # Average delivery time (for delivered orders — batch queried to prevent N+1 overhead)
     avg_delivery_time = None
     delivered_orders = (
-        db.query(Order)
+        db.query(Order.id)
         .filter(Order.status == OrderStatusEnum.DELIVERED)
-        .limit(100)
+        .limit(50)
         .all()
     )
     if delivered_orders:
+        deliv_ids = [d[0] for d in delivered_orders]
+        histories = (
+            db.query(OrderStatusHistory.order_id, OrderStatusHistory.new_status, OrderStatusHistory.created_at)
+            .filter(
+                OrderStatusHistory.order_id.in_(deliv_ids),
+                OrderStatusHistory.new_status.in_(["CREATED", "DELIVERED"]),
+            )
+            .all()
+        )
+        stamps_by_order = {}
+        for h in histories:
+            stamps_by_order.setdefault(h.order_id, {})[h.new_status] = h.created_at
+
         times = []
-        for o in delivered_orders:
-            # Find CREATED and DELIVERED timestamps
-            created_h = (
-                db.query(OrderStatusHistory)
-                .filter(OrderStatusHistory.order_id == o.id, OrderStatusHistory.new_status == "CREATED")
-                .first()
-            )
-            delivered_h = (
-                db.query(OrderStatusHistory)
-                .filter(OrderStatusHistory.order_id == o.id, OrderStatusHistory.new_status == "DELIVERED")
-                .first()
-            )
-            if created_h and delivered_h:
-                delta = (delivered_h.created_at - created_h.created_at).total_seconds() / 3600
+        for o_id, stamps in stamps_by_order.items():
+            if "CREATED" in stamps and "DELIVERED" in stamps:
+                delta = (stamps["DELIVERED"] - stamps["CREATED"]).total_seconds() / 3600
                 times.append(round(delta, 1))
         if times:
             avg_delivery_time = round(sum(times) / len(times), 1)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ordersApi, extractErrorMessage } from '../api/client';
-import { PriceQuote } from '../types';
+import { PriceQuote, Order, AssignmentDecision } from '../types';
 import { PricingBreakdownCard } from '../components/PricingBreakdownCard';
 import { 
   Package, 
@@ -9,7 +9,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   ArrowRight, 
-  Sparkles, 
   CreditCard,
   ShieldCheck,
   Zap,
@@ -20,7 +19,9 @@ import {
   Building2,
   User,
   Sliders,
-  Compass
+  Compass,
+  RotateCcw,
+  Clock
 } from 'lucide-react';
 
 interface Props {
@@ -52,6 +53,11 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState<'inter' | 'intra' | 'heavy' | null>('inter');
   const [activeSize, setActiveSize] = useState<'small' | 'standard' | 'large' | null>('standard');
+
+  // Dominant Post-Confirmation State
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [assignedDecision, setAssignedDecision] = useState<AssignmentDecision | null>(null);
+  const [dispatchStep, setDispatchStep] = useState<'IDLE' | 'CREATING' | 'DISPATCHING' | 'SUCCESS'>('IDLE');
 
   // Computed Volumetric Weight for instant feedback
   const volumetricWeightKg = (lengthCm * breadthCm * heightCm) / 5000;
@@ -184,6 +190,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
     e.preventDefault();
     setSubmitError(null);
     setSubmitLoading(true);
+    setDispatchStep('CREATING');
 
     try {
       const order = await ordersApi.createOrder({
@@ -198,17 +205,142 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
         order_type: orderType,
         payment_type: paymentType,
       });
-      onOrderCreated(order.id);
+
+      setDispatchStep('DISPATCHING');
+
+      // Fetch fresh order details and assignment decisions
+      const [freshOrder, assignments] = await Promise.all([
+        ordersApi.getOrder(order.id).catch(() => order),
+        ordersApi.getAssignments(order.id).catch(() => []),
+      ]);
+
+      setCreatedOrder(freshOrder);
+      if (assignments.length > 0) {
+        setAssignedDecision(assignments[assignments.length - 1]);
+      }
+      setDispatchStep('SUCCESS');
     } catch (err: any) {
       setSubmitError(extractErrorMessage(err));
+      setDispatchStep('IDLE');
     } finally {
       setSubmitLoading(false);
     }
   };
 
+  // Dominant Visual Confirmation Screen
+  if (dispatchStep === 'SUCCESS' && createdOrder) {
+    const isAssigned = createdOrder.status === 'ASSIGNED' || !!createdOrder.agent_id;
+    const courierName = createdOrder.agent_name || assignedDecision?.selected_agent_name;
+    const distanceKm = assignedDecision?.selected_distance_km;
+
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6 animate-in fade-in duration-200">
+        <div className={`stripe-card rounded-2xl p-6 sm:p-8 space-y-6 border-t-4 ${isAssigned ? 'border-t-[#287A55] dark:border-t-[#55A878]' : 'border-t-[#3157A6] dark:border-t-[#6D8ED4]'}`}>
+          <div className="text-center space-y-2 pb-4 border-b border-[#E2E5E9] dark:border-[#2B3138]">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto shadow-2xs border ${
+              isAssigned 
+                ? 'bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border-[#C8E5D6] dark:border-[#203D2E]'
+                : 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border-[#D0DEF2] dark:border-[#25354E]'
+            }`}>
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
+              {isAssigned ? 'Order Confirmed & Courier Dispatched' : 'Order Confirmed & Queued for Dispatch'}
+            </h1>
+            <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5]">
+              {isAssigned
+                ? 'Shipment registered in database and automatically assigned to the nearest available courier.'
+                : 'Shipment registered in database. Active couriers are currently at peak capacity — queued for dispatch.'}
+            </p>
+          </div>
+
+          {/* 3-Step Milestone Progression */}
+          <div className="bg-[#F1F3F5] dark:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] rounded-xl p-4 space-y-3 text-xs">
+            <div className="flex items-center gap-3 text-[#287A55] dark:text-[#55A878] font-semibold">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Order <strong className="font-mono text-[#171A1F] dark:text-[#E8EAED]">#{createdOrder.id.slice(0, 8)}</strong> Created & Validated</span>
+            </div>
+            
+            {isAssigned ? (
+              <>
+                <div className="flex items-center gap-3 text-[#287A55] dark:text-[#55A878] font-semibold">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>Nearest-Agent Haversine Dispatch Engine Executed</span>
+                </div>
+                <div className="flex items-start gap-3 text-[#3157A6] dark:text-[#6D8ED4] font-semibold pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+                  <Truck className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-2">
+                      <span>Courier Assigned:</span>
+                      <span className="text-[#287A55] dark:text-[#55A878] bg-[#EAF5F0] dark:bg-[#16271E] px-2 py-0.5 rounded border border-[#C8E5D6] dark:border-[#203D2E]">
+                        {courierName || 'Assigned Courier'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-normal">
+                      {distanceKm !== undefined && distanceKm !== null ? `${distanceKm} km away · ` : ''}Assignment: Nearest Available Courier
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-start gap-3 text-[#A66A16] dark:text-[#D19A4A] font-semibold pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
+                <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold">Dispatch Queue: Pending Available Courier</div>
+                  <div className="text-[11px] font-normal text-[#5F6672] dark:text-[#A7ADB5]">
+                    All couriers in pickup zone are currently executing deliveries. Dispatch will retry automatically.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Routing & Order Specs Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="p-3.5 bg-white dark:bg-[#181C20] rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] space-y-1">
+              <span className="text-[10px] uppercase font-bold text-[#8A919C] dark:text-[#737A84] block">Route</span>
+              <div className="text-[#171A1F] dark:text-[#E8EAED] font-medium truncate">{createdOrder.drop_address}</div>
+              <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px]">PIN: <span className="font-mono">{createdOrder.drop_pincode}</span> ({createdOrder.drop_zone_name || 'Zone'})</div>
+            </div>
+
+            <div className="p-3.5 bg-white dark:bg-[#181C20] rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] space-y-1">
+              <span className="text-[10px] uppercase font-bold text-[#8A919C] dark:text-[#737A84] block">Pricing & Specs</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[#5F6672] dark:text-[#A7ADB5]">Chargeable: {createdOrder.chargeable_weight_kg} kg</span>
+                <span className="text-sm font-mono font-bold text-[#287A55] dark:text-[#55A878]">₹{createdOrder.total_charge.toFixed(2)}</span>
+              </div>
+              <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px]">{createdOrder.order_type} · {createdOrder.payment_type}</div>
+            </div>
+          </div>
+
+          {/* Action CTAs */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+            <button
+              onClick={() => onOrderCreated(createdOrder.id)}
+              className="w-full sm:flex-1 stripe-btn-primary py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            >
+              <span>Track Live Shipment & Timeline</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => {
+                setDispatchStep('IDLE');
+                setCreatedOrder(null);
+                setAssignedDecision(null);
+              }}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] text-xs font-semibold cursor-pointer transition-colors"
+            >
+              Book Another Shipment
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-150">
-      {/* Header Banner with In-Line 1-Click Scenarios */}
+      {/* Header Banner with In-Line 1-Click Route Presets */}
       <div className="pb-3.5 border-b border-[#E2E5E9] dark:border-[#2B3138] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -221,15 +353,15 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
             </span>
           </div>
           <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
-            Deterministic route mapping, volumetric weight calculation (<code className="font-mono text-[#171A1F] dark:text-[#E8EAED]">L×B×H÷5000</code>), and automated driver dispatch.
+            Deterministic route mapping, volumetric weight calculation (<code className="font-mono text-[#171A1F] dark:text-[#E8EAED]">L×B×H÷5000</code>), and automated courier dispatch.
           </p>
         </div>
 
         {/* In-Line 1-Click Route Presets */}
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-semibold flex items-center gap-1 mr-0.5">
-            <Sparkles className="w-3 h-3 text-[#3157A6] dark:text-[#6D8ED4]" />
-            Scenarios:
+            <Compass className="w-3 h-3 text-[#3157A6] dark:text-[#6D8ED4]" />
+            Route Presets:
           </span>
 
           <button

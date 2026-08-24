@@ -1,5 +1,6 @@
 import React from 'react';
 import { OrderStatus } from '../types';
+import { Check, AlertTriangle, Clock, RefreshCw, XCircle, Truck, Package, UserCheck } from 'lucide-react';
 
 interface Props {
   status: OrderStatus | string;
@@ -15,11 +16,11 @@ const statusConfig: Record<
     border: string;
     dot: string;
     label: string;
+    icon?: React.ReactNode;
     isLive?: boolean;
   }
 > = {
   CREATED: {
-    // neutral / slate
     bg: 'bg-[#F1F3F5] dark:bg-[#1E2328]',
     text: 'text-[#5F6672] dark:text-[#A7ADB5]',
     border: 'border-[#E2E5E9] dark:border-[#2B3138]',
@@ -28,7 +29,6 @@ const statusConfig: Record<
     isLive: true,
   },
   ASSIGNED: {
-    // blue (#3157A6 / #6D8ED4)
     bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
     text: 'text-[#3157A6] dark:text-[#6D8ED4]',
     border: 'border-[#D0DEF2] dark:border-[#25354E]',
@@ -37,7 +37,6 @@ const statusConfig: Record<
     isLive: true,
   },
   PICKED_UP: {
-    // blue (#3157A6 / #6D8ED4)
     bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
     text: 'text-[#3157A6] dark:text-[#6D8ED4]',
     border: 'border-[#D0DEF2] dark:border-[#25354E]',
@@ -46,7 +45,6 @@ const statusConfig: Record<
     isLive: true,
   },
   IN_TRANSIT: {
-    // blue (#3157A6 / #6D8ED4)
     bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
     text: 'text-[#3157A6] dark:text-[#6D8ED4]',
     border: 'border-[#D0DEF2] dark:border-[#25354E]',
@@ -55,7 +53,6 @@ const statusConfig: Record<
     isLive: true,
   },
   OUT_FOR_DELIVERY: {
-    // blue (#3157A6 / #6D8ED4)
     bg: 'bg-[#EBF1FA] dark:bg-[#182232]',
     text: 'text-[#3157A6] dark:text-[#6D8ED4]',
     border: 'border-[#D0DEF2] dark:border-[#25354E]',
@@ -64,7 +61,6 @@ const statusConfig: Record<
     isLive: true,
   },
   DELIVERED: {
-    // green (#287A55 / #55A878)
     bg: 'bg-[#EAF5F0] dark:bg-[#16271E]',
     text: 'text-[#287A55] dark:text-[#55A878]',
     border: 'border-[#C8E5D6] dark:border-[#203D2E]',
@@ -72,7 +68,6 @@ const statusConfig: Record<
     label: 'Delivered',
   },
   FAILED: {
-    // red (#B54848 / #D56B6B)
     bg: 'bg-[#FAF0F0] dark:bg-[#2B1717]',
     text: 'text-[#B54848] dark:text-[#D56B6B]',
     border: 'border-[#F2D0D0] dark:border-[#432323]',
@@ -80,7 +75,6 @@ const statusConfig: Record<
     label: 'Failed',
   },
   RESCHEDULED: {
-    // amber / warning (#A66A16 / #D19A4A)
     bg: 'bg-[#FAF3E8] dark:bg-[#292014]',
     text: 'text-[#A66A16] dark:text-[#D19A4A]',
     border: 'border-[#F2DEBF] dark:border-[#42321D]',
@@ -89,7 +83,6 @@ const statusConfig: Record<
     isLive: true,
   },
   CANCELLED: {
-    // neutral / slate
     bg: 'bg-[#F1F3F5] dark:bg-[#1E2328]',
     text: 'text-[#5F6672] dark:text-[#737A84]',
     border: 'border-[#E2E5E9] dark:border-[#2B3138]',
@@ -108,9 +101,9 @@ export const StatusBadge: React.FC<Props> = ({ status, size = 'md', showPulse = 
   };
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-[10px] tracking-tight font-mono font-medium',
-    md: 'px-2.5 py-0.5 text-[11px] tracking-tight font-mono font-semibold',
-    lg: 'px-3 py-1 text-xs font-mono font-semibold',
+    sm: 'px-2 py-0.5 text-[11px] font-medium leading-none',
+    md: 'px-2.5 py-1 text-xs font-semibold leading-none',
+    lg: 'px-3 py-1.5 text-xs font-semibold leading-none',
   };
 
   const dotSizes = {

@@ -15,7 +15,6 @@ import {
   ShieldCheck, 
   X, 
   Check, 
-  Sparkles,
   RefreshCw,
   Truck,
   MapPin,
@@ -28,29 +27,63 @@ interface Props {
   onCreateOrderClick: () => void;
 }
 
-// Visual pipeline stepper helper for immediate cognitive clarity
-const getPipelineProgress = (status: OrderStatus) => {
+// 6-stage logistics pipeline helper
+const STAGES = [
+  { key: 'CREATED', label: 'Created' },
+  { key: 'ASSIGNED', label: 'Assigned' },
+  { key: 'PICKED_UP', label: 'Picked Up' },
+  { key: 'IN_TRANSIT', label: 'In Transit' },
+  { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
+  { key: 'DELIVERED', label: 'Delivered' },
+];
+
+const getStageIndex = (status: OrderStatus): number => {
   switch (status) {
     case 'CREATED':
-      return { stepText: 'Step 1 of 6', percent: 16.6, label: 'Order Registered' };
+      return 0;
     case 'ASSIGNED':
-      return { stepText: 'Step 2 of 6', percent: 33.3, label: 'Courier Assigned' };
+      return 1;
     case 'PICKED_UP':
-      return { stepText: 'Step 3 of 6', percent: 50.0, label: 'Package Picked Up' };
+      return 2;
     case 'IN_TRANSIT':
-      return { stepText: 'Step 4 of 6', percent: 66.6, label: 'In Transit to Hub' };
+      return 3;
     case 'OUT_FOR_DELIVERY':
-      return { stepText: 'Step 5 of 6', percent: 83.3, label: 'Out for Final Delivery' };
+      return 4;
     case 'DELIVERED':
-      return { stepText: 'Step 6 of 6', percent: 100, label: 'Successfully Delivered' };
+      return 5;
     case 'FAILED':
-      return { stepText: 'Attempt Exception', isFailed: true, percent: 83.3, label: 'Attempt Failed - Rescheduled' };
+      return 4; // shows failure during delivery attempt
     case 'RESCHEDULED':
-      return { stepText: 'Step 2 of 6 (Rescheduled)', percent: 33.3, label: 'Rescheduled for Retry' };
+      return 1; // returned to assignment queue
     case 'CANCELLED':
-      return { stepText: 'Cancelled', percent: 0, label: 'Cancelled' };
+      return -1;
     default:
-      return { stepText: 'Processing', percent: 20, label: status };
+      return 0;
+  }
+};
+
+const getStageLabel = (status: OrderStatus): string => {
+  switch (status) {
+    case 'CREATED':
+      return 'Stage 1 of 6 · Order Created';
+    case 'ASSIGNED':
+      return 'Stage 2 of 6 · Courier Assigned';
+    case 'PICKED_UP':
+      return 'Stage 3 of 6 · Package Picked Up';
+    case 'IN_TRANSIT':
+      return 'Stage 4 of 6 · In Transit to Hub';
+    case 'OUT_FOR_DELIVERY':
+      return 'Stage 5 of 6 · Out for Final Delivery';
+    case 'DELIVERED':
+      return 'Stage 6 of 6 · Delivered Successfully';
+    case 'FAILED':
+      return 'Delivery Attempt Exception · Rescheduled';
+    case 'RESCHEDULED':
+      return 'Rescheduled for Next Attempt';
+    case 'CANCELLED':
+      return 'Order Cancelled';
+    default:
+      return status;
   }
 };
 
@@ -286,7 +319,11 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOrders.map((order, idx) => {
-            const pipeline = getPipelineProgress(order.status);
+            const currentStageIdx = getStageIndex(order.status);
+            const stageLabel = getStageLabel(order.status);
+            const isFailed = order.status === 'FAILED';
+            const isDelivered = order.status === 'DELIVERED';
+            const isRescheduled = order.status === 'RESCHEDULED';
 
             return (
               <div
@@ -296,7 +333,7 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
                 className="stripe-card-interactive card-enter rounded-2xl p-5 cursor-pointer space-y-3.5 group flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  {/* Top Bar: Order ID & Status Badge */}
+                  {/* 1. Top Bar: Order ID & Status Badge */}
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-[#171A1F] dark:text-[#E8EAED] group-hover:text-[#3157A6] dark:group-hover:text-[#6D8ED4] transition-colors">
                       #{order.id.slice(0, 8)}
@@ -304,58 +341,87 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
                     <StatusBadge status={order.status} size="sm" />
                   </div>
 
-                  {/* Visual Progress Bar (Immediate Cognitive Understanding) */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px]">
-                      <span className={`font-semibold ${pipeline.isFailed ? 'text-[#B54848] dark:text-[#D56B6B]' : 'text-[#3157A6] dark:text-[#6D8ED4]'}`}>
-                        {pipeline.label}
+                  {/* 2. 6-Stage Logistics Progress Indicator */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-semibold ${
+                        isFailed 
+                          ? 'text-[#B54848] dark:text-[#D56B6B]' 
+                          : isRescheduled
+                          ? 'text-[#A66A16] dark:text-[#D19A4A]'
+                          : isDelivered 
+                          ? 'text-[#287A55] dark:text-[#55A878]' 
+                          : 'text-[#3157A6] dark:text-[#6D8ED4]'
+                      }`}>
+                        {stageLabel}
                       </span>
-                      <span className="text-[#8A919C] dark:text-[#737A84] font-medium">{pipeline.stepText}</span>
                     </div>
-                    <div className="w-full bg-[#E2E5E9] dark:bg-[#2B3138] h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          pipeline.isFailed
-                            ? 'bg-[#B54848] dark:bg-[#D56B6B]'
-                            : order.status === 'DELIVERED'
-                            ? 'bg-[#287A55] dark:bg-[#55A878]'
-                            : 'bg-[#3157A6] dark:bg-[#6D8ED4]'
-                        }`}
-                        style={{ width: `${pipeline.percent}%` }}
-                      />
+
+                    {/* 6 Segment Progress Bar */}
+                    <div className="grid grid-cols-6 gap-1 h-1.5 w-full">
+                      {STAGES.map((st, sIdx) => {
+                        let barClass = 'bg-[#E2E5E9] dark:bg-[#2B3138]'; // future muted
+                        if (isFailed && sIdx === currentStageIdx) {
+                          barClass = 'bg-[#B54848] dark:bg-[#D56B6B]';
+                        } else if (isRescheduled && sIdx <= currentStageIdx) {
+                          barClass = 'bg-[#A66A16] dark:text-[#D19A4A]';
+                        } else if (isDelivered) {
+                          barClass = 'bg-[#287A55] dark:bg-[#55A878]';
+                        } else if (sIdx < currentStageIdx) {
+                          barClass = 'bg-[#3157A6] dark:bg-[#6D8ED4]'; // past subdued
+                        } else if (sIdx === currentStageIdx) {
+                          barClass = 'bg-[#3157A6] dark:bg-[#6D8ED4] ring-1 ring-[#3157A6]/50 dark:ring-[#6D8ED4]/50'; // current prominent
+                        }
+
+                        return (
+                          <div
+                            key={st.key}
+                            title={`${sIdx + 1}. ${st.label}`}
+                            className={`h-full rounded-full transition-all duration-200 ${barClass}`}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Route & Delivery Address */}
+                  {/* 3. Destination Address */}
                   <div className="space-y-1 text-xs">
                     <div className="text-[#171A1F] dark:text-[#E8EAED] truncate font-semibold text-[13px]">
                       {order.drop_address}
                     </div>
-                    <div className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px] flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#8A919C] dark:text-[#737A84]" />
-                      <span><span className="font-mono">PIN {order.drop_pincode}</span> ({order.drop_zone_name || 'Destination'})</span>
+                    <div className="text-[#5F6672] dark:text-[#A7ADB5] text-xs flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-[#8A919C] dark:text-[#737A84] shrink-0" />
+                      <span>PIN <span className="font-mono font-medium">{order.drop_pincode}</span> ({order.drop_zone_name || 'Destination'})</span>
                     </div>
                   </div>
 
-                  {/* Specs Pill */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] bg-[#F1F3F5] dark:bg-[#1E2328] p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
+                  {/* 4. Courier Assignment Status */}
+                  <div className="text-xs bg-[#F1F3F5] dark:bg-[#1E2328] px-3 py-2 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] flex items-center justify-between">
+                    <span className="text-[#5F6672] dark:text-[#A7ADB5]">Courier:</span>
+                    <span className="font-medium text-[#171A1F] dark:text-[#E8EAED]">
+                      {order.agent_name ? order.agent_name : order.agent_id ? 'Assigned & Dispatched' : 'Auto-Dispatch Active'}
+                    </span>
+                  </div>
+
+                  {/* 5. Specs Pill: Weight & Amount */}
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-[#F1F3F5] dark:bg-[#1E2328] p-2.5 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
                     <div>
-                      <span className="text-[#8A919C] dark:text-[#737A84] block text-[9px] uppercase font-semibold">Weight</span>
+                      <span className="text-[#8A919C] dark:text-[#737A84] block text-[10px] uppercase font-semibold">Weight</span>
                       <strong className="text-[#171A1F] dark:text-[#E8EAED]">{order.chargeable_weight_kg} kg</strong>
                     </div>
                     <div>
-                      <span className="text-[#8A919C] dark:text-[#737A84] block text-[9px] uppercase font-semibold">Amount ({order.payment_type})</span>
+                      <span className="text-[#8A919C] dark:text-[#737A84] block text-[10px] uppercase font-semibold">Amount ({order.payment_type})</span>
                       <strong className="text-[#287A55] dark:text-[#55A878] font-bold">₹{order.total_charge.toFixed(2)}</strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer Action Card */}
+                {/* 6. Footer Action Card */}
                 <div className="pt-2.5 border-t border-[#E2E5E9] dark:border-[#2B3138] flex items-center justify-between text-xs text-[#8A919C] dark:text-[#737A84] group-hover:text-[#3157A6] dark:group-hover:text-[#6D8ED4] transition-colors">
-                  <span className="text-[10px] text-[#8A919C] dark:text-[#737A84]">
+                  <span className="text-xs text-[#8A919C] dark:text-[#737A84]">
                     {new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                   </span>
-                  <span className="flex items-center gap-1 font-semibold text-[11px]">
+                  <span className="flex items-center gap-1 font-semibold text-xs">
                     Track Shipment <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </span>
                 </div>

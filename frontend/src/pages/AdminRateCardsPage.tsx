@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { adminApi, extractErrorMessage } from '../api/client';
 import { RateCard, CODSurcharge } from '../types';
-import { CreditCard, Edit2, ShieldAlert, CheckCircle2, History, RefreshCw, X, Sparkles, AlertCircle } from 'lucide-react';
+import { CreditCard, Edit2, ShieldAlert, CheckCircle2, History, RefreshCw, X, AlertCircle } from 'lucide-react';
 
 export const AdminRateCardsPage: React.FC = () => {
   const [rateCards, setRateCards] = useState<RateCard[]>([]);
