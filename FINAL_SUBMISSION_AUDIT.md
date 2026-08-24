@@ -14,14 +14,14 @@
 
 | Requirement ID | Specification Summary | Implementation File | Verification & Test Evidence | Status |
 |---|---|---|---|:---:|
-| **REQ-01** | Full-featured last-mile delivery tracking platform | Full Stack | Live URLs active on Vercel & Render; 70/70 tests passing | **PASS** |
+| **REQ-01** | Full-featured last-mile delivery tracking platform | Full Stack | Live URLs active on Vercel & Render; 71/71 tests passing | **PASS** |
 | **REQ-02** | Order input schema: L×B×H, weight, B2B/B2C, Prepaid/COD | `backend/app/schemas/orders.py` | `test_pricing_engine.py`, `test_api.py` | **PASS** |
 | **REQ-03** | Order output: pricing snapshot, assignment, tracking | `backend/app/api/orders.py` | `test_order_lifecycle.py`, `test_failed_delivery_flow.py` | **PASS** |
 | **REQ-04** | Admin zone/area/rate/COD surcharge configuration | `backend/app/api/admin.py` | `test_security_rbac.py`, `test_api.py` | **PASS** |
 | **REQ-05** | Customer registration/login + Admin order creation on behalf | `backend/app/api/auth.py`, `orders.py` | `test_admin_create_order_for_*` (3 tests) | **PASS** |
 | **REQ-06** | Divisor 5000 volumetric weight, max chargeable, COD fee | `backend/app/services/pricing_engine.py` | `test_exact_assignment_worked_example` (₹322.25) | **PASS** |
 | **REQ-07** | Live price preview before order confirmation | `backend/app/api/orders.py` (`/quote`) | `test_pricing_engine.py`, UI quote modal | **PASS** |
-| **REQ-08** | Nearest-available auto-assignment & manual dispatch override | `backend/app/services/assignment_engine.py`| `test_auto_assign_success`, `test_concurrency.py` | **PASS** |
+| **REQ-08** | Nearest-available auto-assignment on order creation & manual dispatch override | `backend/app/services/assignment_engine.py`, `backend/app/api/orders.py` | Auto-dispatch fires immediately after order commit (`test_auto_assign_fires_on_order_creation`); Admin retry/override via `POST /assign`; `test_concurrency.py` | **PASS** |
 | **REQ-09** | Order state machine (Picked Up ➔ In Transit ➔ Out for Delivery ➔ Delivered / Failed) | `backend/app/services/order_lifecycle.py`| `test_transition_validation_matrix` | **PASS** |
 | **REQ-10** | Failed delivery capture, reschedule date, auto-reassignment | `backend/app/api/orders.py` | `test_complete_failed_delivery_reschedule_and_reassign` | **PASS** |
 | **REQ-11** | Live customer tracking and audit timeline | `backend/app/api/orders.py` | `test_order_transition_and_history_creation` | **PASS** |
@@ -40,7 +40,7 @@
 | **REQ-24** | Public GitHub repository submission | GitHub `main` branch | Synced at `https://github.com/Nithin1138/Last-Mile-Delivery-Tracker` | **PASS** |
 | **REQ-25** | No node_modules, .env, or build artifacts in ZIP/Git | `.gitignore`, `package_submission.py` | Verified clean exclusion list | **PASS** |
 | **REQ-26** | Minimal, strictly pinned dependencies | `backend/requirements.txt`, `package.json` | Python 3.12, FastAPI, React 19, Vite | **PASS** |
-| **REQ-27** | Error-free execution & clean code structure | Backend + Frontend | 70/70 pytest passing, Vite build passing | **PASS** |
+| **REQ-27** | Error-free execution & clean code structure | Backend + Frontend | 71/71 pytest passing, Vite build passing | **PASS** |
 
 ---
 
@@ -55,4 +55,4 @@
 3. **Notification Provider Architecture**:
    - Provider interface abstracting `ConsoleNotificationProvider` (local evaluation and DB auditing) and `ResendNotificationProvider` (production transactional HTML email). The system gracefully logs provider responses without aborting core business transactions.
 4. **Render Blueprint Configuration**: `render.yaml` points directly to the active live production backend (`https://lastmile-backend-f1ma.onrender.com`) and permits the live Vercel frontend in `CORS_ORIGINS`.
-5. **Accurate Test Suite Breakdown**: 70 passing automated tests across 10 modules covering pricing, assignment, concurrency, lifecycle, failed delivery, distance, zones, RBAC, and immutability.
+5. **Accurate Test Suite Breakdown**: 71 passing automated tests across 10 modules covering pricing, assignment (including API-level auto-dispatch proof), concurrency, lifecycle, failed delivery, distance, zones, RBAC, and immutability.

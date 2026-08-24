@@ -33,12 +33,14 @@ The application comes pre-seeded with realistic operational data (demo accounts,
    │   ├── Base Charge = ₹50 + (₹20 × 12) = ₹290.00
    │   ├── COD Surcharge = ₹25 + (2.5% × ₹290) = ₹32.25
    │   └── Total Payable = ₹322.25
-   └── Click "Confirm & Place Order"
+   ├── Click "Confirm & Place Order"
+   └── System immediately auto-dispatches nearest available agent (Babu Naidu)
+       ↳ Order returns status: ASSIGNED in the same response — no admin action required!
 
 2. Admin Login (Email: admin@lastmile.dev / Pass: admin123)
-   ├── Navigate to "Orders" tab → Locate the newly created order (Status: CREATED)
-   ├── Click "Auto-Assign"
-   └── View assignment audit decision: Inspect evaluated candidates, Haversine proximity distance, and assigned agent (Babu Naidu)
+   ├── Navigate to "Orders" tab → Order already shows ASSIGNED to Babu Naidu
+   ├── Inspect assignment audit: Haversine proximity ranking, evaluated candidates, dispatch decision
+   └── "Auto-Assign" / "Manual Assign" button available as fallback or to override/reassign
 
 3. Agent Login (Email: babu.naidu@delivery.dev / Pass: agent123)
    ├── Navigate to "Assigned Deliveries"
@@ -76,7 +78,7 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (70 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
+- **Testing**: Pytest (71 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
 
 ---
 
@@ -260,14 +262,14 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Complete Test Suite Coverage (70 Tests):
+### Complete Test Suite Coverage (71 Tests):
 - `test_security_rbac.py` (19 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, complete lifecycle state machine and terminal lock validation, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.
 - `test_pricing_engine.py` (8 tests): Volumetric weight calculation, chargeable weight determination, B2B vs. B2C rate cards, INTRA vs. INTER zone pricing, COD surcharge formulas, and the canonical worked evaluation example.
 - `test_concurrency.py` (7 tests): True multithreaded PostgreSQL concurrent claim race conditions across isolated threads and sessions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via `SELECT FOR UPDATE`, initial active rate card concurrent creation race conflict handling through FastAPI HTTP endpoint proving exact `[200, 409]` conflict behavior, capacity limits, and release mechanics.
 - `test_api.py` (7 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze, structured 400 error responses on malformed UUID inputs, order notification list endpoints, and concurrent rate card versioning safety.
 - `test_notifications.py` (6 tests): Resend email provider, Console provider fallbacks, factory configuration, lifecycle event notification dispatch, password reset HTML templates, and structured database audit logging.
 - `test_order_lifecycle.py` (5 tests): State machine transitions matrix, illegal transitions, cancellation rules, failure transitions from `ASSIGNED` / `PICKED_UP` / `IN_TRANSIT`, and append-only status history auditing.
-- `test_assignment_engine.py` (5 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, and fallback handling.
+- `test_assignment_engine.py` (6 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, fallback handling, and **API-level proof that auto-dispatch fires immediately on order creation** (`test_auto_assign_fires_on_order_creation`).
 - `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.
 - `test_zone_service.py` (4 tests): Pincode resolution, unknown pincode rejection, and inactive area rejection.
 - `test_distance.py` (4 tests): Haversine mathematical accuracy (Delhi–Mumbai sanity check, coordinates distance formula).

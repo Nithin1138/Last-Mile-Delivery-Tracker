@@ -196,3 +196,126 @@ def test_auto_assign_preserves_zero_distance(db):
     assert decision.selected_distance_km is not None
     assert decision.selected_agent_id == agent.id
 
+
+def test_auto_assign_fires_on_order_creation(client, db):
+    """REQ-08 API-level proof: when an available agent exists, creating an order via the
+    REST API must return status=ASSIGNED with agent_id populated — no admin action needed.
+
+    This is the end-to-end proof that automatic dispatch runs immediately after the
+    order creation commit, satisfying the PDF objective:
+    'Output: Order with auto-calculated charge, agent assignment, status tracking, notifications.'
+    """
+    from app.models.models import (
+        Area, RateCard, ZoneRelationEnum, DeliveryAttempt,
+        DeliveryAttemptStatusEnum, AssignmentDecision,
+    )
+    from app.core.security import hash_password, create_access_token
+
+    # Setup zone + area + rate card
+    zone = Zone(name="Auto Assign On Create Zone")
+    db.add(zone)
+    db.flush()
+    area = Area(pincode="560001", name="Bangalore Central", zone_id=zone.id, is_active=True)
+    rate = RateCard(
+        order_type=OrderTypeEnum.B2C,
+        zone_type=ZoneRelationEnum.INTRA,
+        base_fee=Decimal("50.00"),
+        rate_per_kg=Decimal("10.00"),
+        version=1,
+        is_active=True,
+    )
+    db.add_all([area, rate])
+    db.flush()
+
+    # Create customer
+    customer_user = User(
+        email="auto_dispatch_cust@test.com",
+        password_hash=hash_password("pass"),
+        name="Dispatch Test Customer",
+        role=RoleEnum.CUSTOMER,
+    )
+    db.add(customer_user)
+    db.flush()
+    customer_token = create_access_token({"sub": str(customer_user.id), "role": "CUSTOMER"})
+
+    # Create available delivery agent
+    agent_user = User(
+        email="auto_dispatch_agent@test.com",
+        password_hash=hash_password("pass"),
+        name="Dispatch Test Agent",
+        role=RoleEnum.AGENT,
+    )
+    db.add(agent_user)
+    db.flush()
+    agent = DeliveryAgent(
+        user_id=agent_user.id,
+        current_zone_id=zone.id,
+        latitude=12.9716,
+        longitude=77.5946,
+        availability_status=AgentStatusEnum.AVAILABLE,
+        current_load=0,
+        max_capacity=5,
+        is_active=True,
+    )
+    db.add(agent)
+    db.commit()
+
+    # Create order via API — agent is available, so auto-assign must fire
+    res = client.post(
+        "/api/orders",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={
+            "pickup_address": "MG Road, Bangalore",
+            "pickup_pincode": "560001",
+            "drop_address": "Brigade Road, Bangalore",
+            "drop_pincode": "560001",
+            "length_cm": 20,
+            "breadth_cm": 15,
+            "height_cm": 10,
+            "actual_weight_kg": 2,
+            "order_type": "B2C",
+            "payment_type": "PREPAID",
+            "pickup_latitude": 12.9716,
+            "pickup_longitude": 77.5946,
+        },
+    )
+    assert res.status_code == 200, f"Order creation failed: {res.text}"
+    data = res.json()
+
+    # CRITICAL: status must be ASSIGNED (not CREATED) — auto-dispatch fired
+    assert data["status"] == "ASSIGNED", (
+        f"Expected ASSIGNED after order creation with available agent, got: {data['status']}"
+    )
+    assert data["agent_id"] is not None, "agent_id must be set after auto-dispatch"
+    assert data["agent_id"] == str(agent.id)
+
+    # Verify Delivery Attempt #1 was created (proves full assignment pipeline ran)
+    order_id = data["id"]
+    attempts = db.query(DeliveryAttempt).filter(
+        DeliveryAttempt.order_id == order_id
+    ).all()
+    assert len(attempts) == 1, f"Expected 1 delivery attempt after auto-assign, got {len(attempts)}"
+    assert attempts[0].attempt_number == 1
+    assert attempts[0].status == DeliveryAttemptStatusEnum.IN_PROGRESS
+
+    # Verify AssignmentDecision audit record was written
+    decision = db.query(AssignmentDecision).filter(
+        AssignmentDecision.order_id == order_id
+    ).first()
+    assert decision is not None, "AssignmentDecision audit record must exist"
+    assert decision.selected_agent_id == agent.id
+
+    # Verify agent load incremented
+    db.refresh(agent)
+    assert agent.current_load == 1
+
+    # Verify complete timeline: CREATED → ASSIGNED both present
+    res_tl = client.get(
+        f"/api/orders/{order_id}/timeline",
+        headers={"Authorization": f"Bearer {customer_token}"},
+    )
+    assert res_tl.status_code == 200
+    statuses = [e["new_status"] for e in res_tl.json()]
+    assert "CREATED" in statuses
+    assert "ASSIGNED" in statuses
+

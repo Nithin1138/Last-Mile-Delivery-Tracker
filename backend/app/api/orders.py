@@ -329,14 +329,31 @@ def create_order(
                 return _order_to_response(existing_order)
         raise AppError(code=ErrorCodes.CONFLICT, message="Concurrent duplicate request.", status_code=409)
 
-    # Notify customer after successful commit
+    # Post-commit: Attempt automatic agent assignment.
+    # The order is already safely committed above — assignment failure NEVER destroys it.
+    # Mirrors the exact same two-transaction pattern used in reschedule_order().
+    try:
+        auto_assign_order(db, order, current_user.id)
+        db.commit()  # ASSIGNED status + Delivery Attempt #1 written atomically
+    except AppError:
+        pass  # NO_AVAILABLE_AGENT or other error — order stays CREATED; Admin can retry
+
+    # Notify customer after successful order commit (always runs regardless of assignment)
+    db.refresh(order)
     customer = db.query(User).filter(User.id == customer_id).first()
     if customer:
         notify_order_created(db, order, customer)
+        # If auto-assignment succeeded, also send an assignment notification
+        if order.agent_id:
+            agent_obj = db.query(DeliveryAgent).options(
+                joinedload(DeliveryAgent.user)
+            ).filter(DeliveryAgent.id == order.agent_id).first()
+            agent_name = agent_obj.user.name if agent_obj and agent_obj.user else "Agent"
+            notify_order_assigned(db, order, customer, agent_name)
         db.commit()
 
     db.refresh(order)
-    return response_payload
+    return _order_to_response(order)
 
 
 # ---------------------------------------------------------------------------

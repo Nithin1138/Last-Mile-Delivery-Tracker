@@ -99,15 +99,16 @@ def test_complete_failed_delivery_reschedule_and_reassign(client, db):
     db.flush()
     admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
 
-    _, agent1 = _make_agent(db, zone, "Agent One", lat=28.6139, lon=77.2090)
-    _, agent2 = _make_agent(db, zone, "Agent Two", lat=28.6200, lon=77.2100)
-    db.commit()
-
-    # Step 1: Create order
+    # Step 1: Create order FIRST (no agents yet — auto-assign finds no candidates and silently stays CREATED)
     res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
     assert res.status_code == 200, f"Order creation failed: {res.text}"
     order_id = res.json()["id"]
     assert res.json()["status"] == "CREATED"
+
+    # Now create agents so the admin assign endpoint has candidates to pick from
+    _, agent1 = _make_agent(db, zone, "Agent One", lat=28.6139, lon=77.2090)
+    _, agent2 = _make_agent(db, zone, "Agent Two", lat=28.6200, lon=77.2100)
+    db.commit()
 
     # Step 2: Admin assigns agent #1
     res = client.post(
@@ -234,16 +235,16 @@ def test_reschedule_no_available_agent_leaves_order_rescheduled(client, db):
     db.flush()
     admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
 
-    # Single agent with max_capacity = 1
+    # Step 1: Create order FIRST (no agent yet — auto-assign silently stays CREATED)
+    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
+    order_id = res.json()["id"]
+
+    # Now add the single agent with max_capacity = 1
     agent_user, agent = _make_agent(db, zone, "Agent Sole", lat=28.6139, lon=77.2090)
     agent.max_capacity = 1
     db.commit()
 
     agent_token = create_access_token({"sub": str(agent_user.id), "role": "AGENT"})
-
-    # Step 1: Create and assign order
-    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
-    order_id = res.json()["id"]
 
     res = client.post(f"/api/orders/{order_id}/assign", headers={"Authorization": f"Bearer {admin_token}"}, json={"mode": "auto"})
     assert res.status_code == 200
@@ -297,14 +298,15 @@ def test_reschedule_unexpected_assignment_app_error_propagates(client, db, monke
     db.flush()
     admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
 
+    # Step 1: Create order FIRST (no agent yet — auto-assign silently stays CREATED)
+    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
+    order_id = res.json()["id"]
+
+    # Now create agent
     agent_user, agent = _make_agent(db, zone, "Agent Err", lat=28.6139, lon=77.2090)
     db.commit()
 
     agent_token = create_access_token({"sub": str(agent_user.id), "role": "AGENT"})
-
-    # Step 1: Create and assign order
-    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
-    order_id = res.json()["id"]
 
     res = client.post(f"/api/orders/{order_id}/assign", headers={"Authorization": f"Bearer {admin_token}"}, json={"mode": "auto"})
     assert res.status_code == 200
@@ -360,17 +362,17 @@ def test_reschedule_all_candidate_claims_fail_preserves_rescheduled_state(client
     db.flush()
     admin_token = create_access_token({"sub": str(admin.id), "role": "ADMIN"})
 
-    # Setup Agent 1 (assigned initially) and Agent 2, 3 (available candidates)
+    # Step 1: Create order FIRST (no agents yet — auto-assign silently stays CREATED)
+    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
+    order_id = res.json()["id"]
+
+    # Now create agents
     agent1_user, agent1 = _make_agent(db, zone, "Agent Initial", lat=28.6139, lon=77.2090)
     agent2_user, agent2 = _make_agent(db, zone, "Candidate Agent A", lat=28.6200, lon=77.2100)
     agent3_user, agent3 = _make_agent(db, zone, "Candidate Agent B", lat=28.6300, lon=77.2200)
     db.commit()
 
     agent1_token = create_access_token({"sub": str(agent1_user.id), "role": "AGENT"})
-
-    # Step 1: Create and assign order to Agent 1
-    res = client.post("/api/orders", headers={"Authorization": f"Bearer {customer_token}"}, json=_make_order_payload())
-    order_id = res.json()["id"]
 
     res = client.post(
         f"/api/orders/{order_id}/assign",

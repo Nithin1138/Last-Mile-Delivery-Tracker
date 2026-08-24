@@ -6,7 +6,7 @@ Performs an automated evaluation audit before packaging:
 1. Validates all critical project files and documentation exist.
 2. Asserts forbidden/stale starter assets (hero.png, vite.svg, App.css) are removed.
 3. Asserts environment example templates exist and no active .env secrets are exposed.
-4. Verifies test count in README.md matches actual pytest test functions (70/70).
+4. Verifies test count in README.md matches actual pytest test functions (71/71).
 5. Validates backend Python syntax via py_compile across all application modules.
 6. Validates frontend TypeScript compilation & build.
 7. Executes backend test suite and verifies 100% pass rate.
