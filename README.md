@@ -78,7 +78,7 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (71 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
+- **Testing**: Pytest (73 unit, security, integration, e2e smoke, notification, database immutability triggers and multithreaded concurrency tests)
 
 ---
 
@@ -252,7 +252,7 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🧪 Comprehensive Automated Test Suite (70 Tests)
+## 🧪 Comprehensive Automated Test Suite (73 Tests)
 
 Run the complete backend test suite:
 
@@ -262,7 +262,7 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Complete Test Suite Coverage (71 Tests):
+### Complete Test Suite Coverage (73 Tests):
 - `test_security_rbac.py` (19 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, complete lifecycle state machine and terminal lock validation, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.
 - `test_pricing_engine.py` (8 tests): Volumetric weight calculation, chargeable weight determination, B2B vs. B2C rate cards, INTRA vs. INTER zone pricing, COD surcharge formulas, and the canonical worked evaluation example.
 - `test_concurrency.py` (7 tests): True multithreaded PostgreSQL concurrent claim race conditions across isolated threads and sessions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via `SELECT FOR UPDATE`, initial active rate card concurrent creation race conflict handling through FastAPI HTTP endpoint proving exact `[200, 409]` conflict behavior, capacity limits, and release mechanics.
@@ -273,6 +273,7 @@ pytest tests/ -v
 - `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.
 - `test_zone_service.py` (4 tests): Pincode resolution, unknown pincode rejection, and inactive area rejection.
 - `test_distance.py` (4 tests): Haversine mathematical accuracy (Delhi–Mumbai sanity check, coordinates distance formula).
+- `test_e2e_smoke.py` (2 tests): Full multi-role end-to-end platform journey smoke test (registration, pricing, auto-dispatch, status transitions, failure, reschedule, second agent assignment, delivery completion, audit verification, request ID tracing headers) + live Resend external gateway integration smoke test.
 
 ---
 
