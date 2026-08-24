@@ -1,13 +1,9 @@
 """
-Notification service — provider abstractions for Email and SMS with Console and Production implementations.
+Transactional Notification Service — provider abstractions for Lifecycle Email Notifications.
 
 Email:
-- Local/demo uses ConsoleNotificationProvider (no external dependency).
+- Local/demo uses ConsoleNotificationProvider (no external dependency, logs to stdout).
 - Production uses ResendNotificationProvider (configured via RESEND_API_KEY env var).
-
-SMS:
-- Local/demo uses ConsoleSmsProvider (logs to stdout/audit tables).
-- Extensible interface for production Twilio/AWS SNS/Gupshup integration.
 
 Failures are logged and recorded in the audit log without corrupting the calling transaction.
 """
@@ -86,6 +82,8 @@ class ResendNotificationProvider(NotificationProvider):
                 error=str(e),
             )
             return False
+
+
 def get_notification_provider() -> NotificationProvider:
     """Factory — returns configured email notification provider."""
     if settings.RESEND_API_KEY:
@@ -105,8 +103,6 @@ def send_order_notification(
     notification_type: str,
     subject: str,
     body: str,
-    user_phone: Optional[str] = None,
-    sms_message: Optional[str] = None,
 ):
     """Send transactional email notification and record structured audit row in PostgreSQL."""
     email_provider = get_notification_provider()
@@ -249,9 +245,7 @@ def notify_order_created(db: Session, order, customer):
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
-        user_phone=customer.phone, notification_type="ORDER_CREATED",
-        subject=subject, body=body,
-        sms_message=f"LastMile: Order #{short_id} confirmed. Total Rs {order.total_charge}. Track in dashboard.",
+        notification_type="ORDER_CREATED", subject=subject, body=body,
     )
 
 
@@ -290,9 +284,7 @@ def notify_order_assigned(db: Session, order, customer, agent_name: str):
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
-        user_phone=customer.phone, notification_type="ORDER_ASSIGNED",
-        subject=subject, body=body,
-        sms_message=f"LastMile: Agent {agent_name} assigned to Order #{short_id}. Pickup starting soon.",
+        notification_type="ORDER_ASSIGNED", subject=subject, body=body,
     )
 
 
@@ -342,9 +334,7 @@ def notify_status_change(db: Session, order, customer, new_status: str):
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
-        user_phone=customer.phone, notification_type=f"STATUS_{new_status}",
-        subject=subject, body=body,
-        sms_message=f"LastMile: Order #{short_id} is now {new_status.replace('_',' ').title()}.",
+        notification_type=f"STATUS_{new_status}", subject=subject, body=body,
     )
 
 
@@ -382,9 +372,7 @@ def notify_delivery_failed(db: Session, order, customer, reason: str):
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
-        user_phone=customer.phone, notification_type="DELIVERY_FAILED",
-        subject=subject, body=body,
-        sms_message=f"LastMile: Delivery failed for #{short_id}. Reason: {reason}. Reschedule in dashboard.",
+        notification_type="DELIVERY_FAILED", subject=subject, body=body,
     )
 
 
@@ -422,9 +410,7 @@ def notify_order_rescheduled(db: Session, order, customer, new_date: str):
 
     send_order_notification(
         db, order_id=order.id, user_id=customer.id, user_email=customer.email,
-        user_phone=customer.phone, notification_type="ORDER_RESCHEDULED",
-        subject=subject, body=body,
-        sms_message=f"LastMile: Order #{short_id} rescheduled to {new_date}. New agent being assigned.",
+        notification_type="ORDER_RESCHEDULED", subject=subject, body=body,
     )
 
 

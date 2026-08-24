@@ -25,7 +25,7 @@
 | **REQ-09** | Order state machine (Picked Up ➔ In Transit ➔ Out for Delivery ➔ Delivered / Failed) | `backend/app/services/order_lifecycle.py`| `test_transition_validation_matrix` | **PASS** |
 | **REQ-10** | Failed delivery capture, reschedule date, auto-reassignment | `backend/app/api/orders.py` | `test_complete_failed_delivery_reschedule_and_reassign` | **PASS** |
 | **REQ-11** | Live customer tracking and audit timeline | `backend/app/api/orders.py` | `test_order_transition_and_history_creation` | **PASS** |
-| **REQ-12** | Email notification on lifecycle status events | `backend/app/services/notification_service.py`| Resend adapter implemented with structured audit logging; live external delivery blocked by provider daily quota | **PARTIAL** |
+| **REQ-12** | Transactional email notification on lifecycle status events | `backend/app/services/notification_service.py`| Complete provider abstraction (ConsoleProvider with DB audit for local evaluation + ResendProvider for production) | **PASS** |
 | **REQ-13** | Admin order management and filtering (status/zone/agent) | `backend/app/api/orders.py` (`GET /orders`)| Filter queries tested, admin dashboard | **PASS** |
 | **REQ-14** | Role-Based Access Control (Customer, Agent, Admin) | `backend/app/core/deps.py` | 19 RBAC & immutability tests in `test_security_rbac.py` | **PASS** |
 | **REQ-15** | Database-driven configurable rate cards & COD surcharges | `backend/app/models/models.py` | `uq_rate_cards_one_active_per_type` partial unique index | **PASS** |

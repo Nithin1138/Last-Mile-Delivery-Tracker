@@ -615,7 +615,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#287A55] dark:bg-[#55A878]" />
-                    <span>Real-Time SMS milestone tracking & live proof of delivery</span>
+                    <span>Real-Time transactional milestone tracking & live proof of delivery</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#287A55] dark:bg-[#55A878]" />

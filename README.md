@@ -148,7 +148,7 @@ WHERE id = :agent_id
 | `POST` | `/api/auth/register` | Public | Register customer account (strictly forces CUSTOMER role) |
 | `POST` | `/api/auth/login` | Public | Authenticate user & return JWT token |
 | `GET` | `/api/auth/me` | Authenticated | Fetch current user profile |
-| `PUT` | `/api/auth/me` | Authenticated | Update user profile / mobile phone for SMS alerts |
+| `PUT` | `/api/auth/me` | Authenticated | Update user profile and notification preferences |
 | `POST` | `/api/orders/quote` | Authenticated (Customer / Admin) | Live rate preview calculation (L×B×H, weight, pincodes) |
 | `POST` | `/api/orders` | Customer / Admin | Idempotent order creation with server-side price freeze |
 | `GET` | `/api/orders` | Customer / Admin | List orders (Admin views all; Customer views own) |
@@ -265,7 +265,7 @@ pytest tests/ -v
 - `test_pricing_engine.py` (8 tests): Volumetric weight calculation, chargeable weight determination, B2B vs. B2C rate cards, INTRA vs. INTER zone pricing, COD surcharge formulas, and the canonical worked evaluation example.
 - `test_concurrency.py` (7 tests): True multithreaded PostgreSQL concurrent claim race conditions across isolated threads and sessions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via `SELECT FOR UPDATE`, initial active rate card concurrent creation race conflict handling through FastAPI HTTP endpoint proving exact `[200, 409]` conflict behavior, capacity limits, and release mechanics.
 - `test_api.py` (7 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze, structured 400 error responses on malformed UUID inputs, order notification list endpoints, and concurrent rate card versioning safety.
-- `test_notifications.py` (6 tests): Resend email provider, Twilio SMS provider, Console provider fallbacks, graceful error handling, and structured database notification audit row persistence across lifecycle events.
+- `test_notifications.py` (6 tests): Resend email provider, Console provider fallbacks, factory configuration, lifecycle event notification dispatch, password reset HTML templates, and structured database audit logging.
 - `test_order_lifecycle.py` (5 tests): State machine transitions matrix, illegal transitions, cancellation rules, failure transitions from `ASSIGNED` / `PICKED_UP` / `IN_TRANSIT`, and append-only status history auditing.
 - `test_assignment_engine.py` (5 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, and fallback handling.
 - `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.

@@ -474,7 +474,7 @@ export const AgentDashboard: React.FC = () => {
                 </div>
 
                 <div className="bg-[#FAF3E8] dark:bg-[#292014] border border-[#F2DEBF] dark:border-[#42321D] p-2.5 rounded-lg text-[#A66A16] dark:text-[#D19A4A] text-[11px] leading-relaxed">
-                  <strong>Automated Rescheduling:</strong> This failure attempt triggers an automated reschedule notice and updates the customer via SMS.
+                  <strong>Automated Rescheduling:</strong> This failure attempt triggers an automated reschedule workflow and dispatches a notification to the customer.
                 </div>
               </div>
             ) : (

@@ -205,7 +205,7 @@ export interface NotificationRecord {
   id: string;
   order_id?: string;
   notification_type: string;
-  channel: 'EMAIL' | 'SMS';
+  channel: 'EMAIL' | string;
   subject?: string;
   body: string;
   status: 'SENT' | 'FAILED' | 'PENDING';

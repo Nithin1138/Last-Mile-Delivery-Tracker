@@ -107,9 +107,8 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Category Alerts Panel & Tab
+  // Transactional Email Alerts Panel
   const [showAlerts, setShowAlerts] = useState(false);
-  const [alertTab, setAlertTab] = useState<'sms' | 'email'>('sms');
   const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
 
   // Reschedule Form
@@ -167,8 +166,7 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
 
   if (typeof document !== 'undefined' && !orderId) return null;
 
-  const smsList = notifications.filter((n) => n.channel === 'SMS');
-  const emailList = notifications.filter((n) => n.channel === 'EMAIL');
+  const emailList = notifications.filter((n) => n.channel === 'EMAIL' || !n.channel);
 
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in">
@@ -211,7 +209,7 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
                   ? 'bg-[#3157A6] text-white border-[#3157A6] shadow-xs'
                   : 'bg-white dark:bg-[#1E2328] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
               }`}
-              title="View SMS and Email Notifications"
+              title="View Transactional Email Notifications"
             >
               <Bell className="w-3.5 h-3.5" />
               <span>Notifications</span>
@@ -250,97 +248,92 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
               {error || 'Order details not found'}
             </div>
           ) : showAlerts ? (
-            /* Dedicated Notifications & Alerts Panel with SMS and Mail Categories */
+            /* Dedicated Transactional Email Notifications Panel */
             <div className="space-y-4 animate-in fade-in">
-              {/* Category Tab Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F1F3F5] dark:bg-[#1E2328] p-2 rounded-2xl border border-[#E2E5E9] dark:border-[#2B3138]">
-                <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#181C20] rounded-xl border border-[#E2E5E9] dark:border-[#2B3138]">
-                  <button
-                    type="button"
-                    onClick={() => setAlertTab('sms')}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                      alertTab === 'sms'
-                        ? 'bg-[#287A55] text-white shadow-xs'
-                        : 'text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
-                    }`}
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>SMS Alerts</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        alertTab === 'sms' ? 'bg-white/20 text-white' : 'bg-[#EBF7EE] dark:bg-[#162B1D] text-[#287A55] dark:text-[#55A878]'
-                      }`}
-                    >
-                      {smsList.length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setAlertTab('email')}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                      alertTab === 'email'
-                        ? 'bg-[#3157A6] text-white shadow-xs'
-                        : 'text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
-                    }`}
-                  >
-                    <Inbox className="w-3.5 h-3.5" />
-                    <span>Mail Inbox</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        alertTab === 'email' ? 'bg-white/20 text-white' : 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4]'
-                      }`}
-                    >
-                      {emailList.length}
-                    </span>
-                  </button>
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F1F3F5] dark:bg-[#1E2328] p-3 rounded-2xl border border-[#E2E5E9] dark:border-[#2B3138]">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
+                    <Inbox className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">
+                        Transactional Email Inbox
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#3157A6] text-white">
+                        {emailList.length} Messages
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">
+                      Branded lifecycle emails dispatched to the customer inbox
+                    </p>
+                  </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setShowAlerts(false)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-white dark:hover:bg-[#181C20] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-white dark:hover:bg-[#181C20] transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto border border-transparent hover:border-[#E2E5E9] dark:hover:border-[#2B3138]"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back to Order Journey</span>
                 </button>
               </div>
 
-              {/* Tab 1: SMS Alerts (Clean Mobile Chat Style) */}
-              {alertTab === 'sms' && (
-                <div className="space-y-3 animate-in fade-in">
-                  {smsList.length === 0 ? (
-                    <div className="p-12 text-center bg-[#F8FAFC] dark:bg-[#1A2027] border border-[#E2E8F0] dark:border-[#2B3138] rounded-2xl space-y-2">
-                      <div className="w-10 h-10 rounded-full bg-[#EBF7EE] dark:bg-[#162B1D] text-[#287A55] dark:text-[#55A878] flex items-center justify-center mx-auto">
-                        <Phone className="w-5 h-5" />
-                      </div>
-                      <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">No SMS alerts yet</div>
-                      <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] max-w-sm mx-auto">
-                        Instant SMS text alerts trigger automatically upon order confirmation, courier assignment, out-for-delivery, and reschedule notices.
-                      </p>
+              {/* Email List Style */}
+              <div className="space-y-3 animate-in fade-in">
+                {emailList.length === 0 ? (
+                  <div className="p-12 text-center bg-[#F8FAFC] dark:bg-[#1A2027] border border-[#E2E8F0] dark:border-[#2B3138] rounded-2xl space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] flex items-center justify-center mx-auto">
+                      <Inbox className="w-5 h-5" />
                     </div>
-                  ) : (
-                    <div className="bg-[#F8FAFC] dark:bg-[#1A2027] border border-[#E2E8F0] dark:border-[#2B3138] rounded-2xl p-4 sm:p-5 space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3 text-xs text-[#5F6672] dark:text-[#A7ADB5]">
-                        <span className="font-semibold text-[#171A1F] dark:text-[#E8EAED] flex items-center gap-1.5">
-                          <Phone className="w-3.5 h-3.5 text-[#287A55] dark:text-[#55A878]" />
-                          SMS Text Dispatch Stream
-                        </span>
-                        <span className="font-mono text-[11px]">{smsList.length} Messages</span>
-                      </div>
+                    <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">Your Inbox is Empty</div>
+                    <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] max-w-sm mx-auto">
+                      Transactional HTML emails are dispatched to the customer on order lifecycle updates.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-[#181C20] border border-[#E2E8F0] dark:border-[#2B3138] rounded-2xl overflow-hidden shadow-xs divide-y divide-[#E2E5E9] dark:divide-[#2B3138]">
+                    {/* Email Inbox Rows */}
+                    {emailList.map((notif) => {
+                      const parsed = parseEmailContent(notif.body);
+                      const isExpanded = expandedEmailId === notif.id;
 
-                      <div className="space-y-3 max-w-2xl mx-auto">
-                        {smsList.map((notif) => (
+                      return (
+                        <div key={notif.id} className="transition-colors">
+                          {/* Inbox Row Header */}
                           <div
-                            key={notif.id}
-                            className="bg-white dark:bg-[#181C20] rounded-2xl p-4 border border-[#E2E8F0] dark:border-[#2B3138] shadow-xs space-y-2.5 transition-all hover:border-[#287A55]/40"
+                            onClick={() => setExpandedEmailId(isExpanded ? null : notif.id)}
+                            className="p-3.5 hover:bg-[#F8FAFC] dark:hover:bg-[#1E2328] cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                           >
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="font-bold text-[#287A55] dark:text-[#55A878] flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-[#287A55] animate-pulse" />
-                                LastMile Flow Dispatch
-                              </span>
-                              <span className="text-[#8A919C] dark:text-[#737A84] font-mono">
+                            <div className="flex items-start sm:items-center gap-3 min-w-0">
+                              <div className="p-2 rounded-lg bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] shrink-0">
+                                <Mail className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">
+                                    {notif.subject || 'Order Notification'}
+                                  </span>
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold uppercase ${
+                                      notif.status === 'SENT'
+                                        ? 'bg-[#EBF7EE] text-[#287A55] dark:bg-[#162B1D] dark:text-[#55A878]'
+                                        : 'bg-[#FAF0F0] text-[#B54848] dark:bg-[#2B1717] dark:text-[#D56B6B]'
+                                    }`}
+                                  >
+                                    {notif.status}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] truncate max-w-lg">
+                                  {parsed.snippet || 'Click to open email'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                              <span className="font-mono text-[11px] text-[#8A919C] dark:text-[#737A84]">
                                 {new Date(notif.created_at).toLocaleString([], {
                                   month: 'short',
                                   day: 'numeric',
@@ -348,149 +341,57 @@ export const OrderDetailModal: React.FC<Props> = ({ orderId, onClose, onRefreshN
                                   minute: '2-digit',
                                 })}
                               </span>
-                            </div>
-
-                            {/* Clean Chat Speech Bubble */}
-                            <div className="bg-[#F1F3F5] dark:bg-[#222831] text-[#171A1F] dark:text-[#E8EAED] rounded-xl p-3.5 text-xs font-sans leading-relaxed border border-[#E2E5E9] dark:border-[#2B3138]">
-                              {notif.body}
-                            </div>
-
-                            <div className="flex items-center justify-between text-[10px] text-[#8A919C] dark:text-[#737A84] pt-0.5">
-                              <span className="font-mono">Carrier: SMS Gateway</span>
-                              <span
-                                className={`px-2 py-0.5 rounded font-mono font-bold uppercase ${
-                                  notif.status === 'SENT'
-                                    ? 'bg-[#EBF7EE] text-[#287A55] dark:bg-[#162B1D] dark:text-[#55A878]'
-                                    : 'bg-[#FAF0F0] text-[#B54848] dark:bg-[#2B1717] dark:text-[#D56B6B]'
-                                }`}
-                              >
-                                {notif.status === 'SENT' ? '✓ Delivered' : '✕ Attempted'}
-                              </span>
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-[#8A919C]" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-[#8A919C]" />
+                              )}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {/* Tab 2: Mail Notifications (Clean Gmail / Inbox List Style) */}
-              {alertTab === 'email' && (
-                <div className="space-y-3 animate-in fade-in">
-                  {emailList.length === 0 ? (
-                    <div className="p-12 text-center bg-[#F8FAFC] dark:bg-[#1A2027] border border-[#E2E8F0] dark:border-[#2B3138] rounded-2xl space-y-2">
-                      <div className="w-10 h-10 rounded-full bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] flex items-center justify-center mx-auto">
-                        <Inbox className="w-5 h-5" />
-                      </div>
-                      <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">Your Inbox is Empty</div>
-                      <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] max-w-sm mx-auto">
-                        Transactional HTML emails are dispatched to your registered inbox on order lifecycle updates.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-white dark:bg-[#181C20] border border-[#E2E8F0] dark:border-[#2B3138] rounded-2xl overflow-hidden shadow-xs divide-y divide-[#E2E5E9] dark:divide-[#2B3138]">
-                      {/* Inbox Header */}
-                      <div className="p-3.5 bg-[#F8FAFC] dark:bg-[#1A2027] flex items-center justify-between text-xs font-semibold text-[#5F6672] dark:text-[#A7ADB5]">
-                        <span className="flex items-center gap-1.5 text-[#171A1F] dark:text-[#E8EAED]">
-                          <Inbox className="w-3.5 h-3.5 text-[#3157A6] dark:text-[#6D8ED4]" />
-                          Transactional Inbox
-                        </span>
-                        <span className="font-mono text-[11px]">{emailList.length} Messages</span>
-                      </div>
-
-                      {/* Email Inbox Rows */}
-                      {emailList.map((notif) => {
-                        const parsed = parseEmailContent(notif.body);
-                        const isExpanded = expandedEmailId === notif.id;
-
-                        return (
-                          <div key={notif.id} className="transition-colors">
-                            {/* Inbox Row Header */}
-                            <div
-                              onClick={() => setExpandedEmailId(isExpanded ? null : notif.id)}
-                              className="p-3.5 hover:bg-[#F8FAFC] dark:hover:bg-[#1E2328] cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
-                            >
-                              <div className="flex items-start sm:items-center gap-3 min-w-0">
-                                <div className="p-2 rounded-lg bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] shrink-0">
-                                  <Mail className="w-3.5 h-3.5" />
-                                </div>
-                                <div className="min-w-0 space-y-0.5">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">
-                                      {notif.subject || 'Order Notification'}
-                                    </span>
-                                    <span
-                                      className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold uppercase ${
-                                        notif.status === 'SENT'
-                                          ? 'bg-[#EBF7EE] text-[#287A55] dark:bg-[#162B1D] dark:text-[#55A878]'
-                                          : 'bg-[#FAF0F0] text-[#B54848] dark:bg-[#2B1717] dark:text-[#D56B6B]'
-                                      }`}
-                                    >
-                                      {notif.status}
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] truncate max-w-lg">
-                                    {parsed.snippet || 'Click to open email'}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                                <span className="font-mono text-[11px] text-[#8A919C] dark:text-[#737A84]">
-                                  {new Date(notif.created_at).toLocaleString([], {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </span>
-                                {isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-[#8A919C]" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-[#8A919C]" />
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Expanded Email Reader with Structured HTML iframe */}
-                            {isExpanded && (
-                              <div className="p-4 bg-[#F8FAFC] dark:bg-[#111417] border-t border-[#E2E5E9] dark:border-[#2B3138] space-y-3 animate-in fade-in">
-                                <div className="bg-white dark:bg-[#181C20] p-3 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-[#5F6672] dark:text-[#A7ADB5] gap-1.5 font-mono">
+                          {/* Expanded Email Viewer — Clean Sandboxed HTML Email Client */}
+                          {isExpanded && (
+                            <div className="p-4 bg-[#F8FAFC] dark:bg-[#12161A] border-t border-[#E2E5E9] dark:border-[#2B3138] space-y-3 animate-in fade-in">
+                              <div className="flex items-center justify-between text-[11px] text-[#5F6672] dark:text-[#A7ADB5] border-b border-[#E2E5E9] dark:border-[#2B3138] pb-2">
+                                <div className="space-y-0.5">
                                   <div>
-                                    <span className="font-bold text-[#171A1F] dark:text-[#E8EAED]">From: </span>LastMile Flow &lt;notifications@lastmileflow.in&gt;
+                                    <strong className="text-[#171A1F] dark:text-[#E8EAED]">Subject:</strong> {notif.subject}
                                   </div>
                                   <div>
-                                    <span className="font-bold text-[#171A1F] dark:text-[#E8EAED]">Status: </span>
+                                    <strong className="text-[#171A1F] dark:text-[#E8EAED]">Delivery Channel:</strong> Transactional Email (
                                     <span className={notif.status === 'SENT' ? 'text-[#287A55] font-bold' : 'text-[#B54848] font-bold'}>
                                       {notif.status === 'SENT' ? 'Delivered to Inbox' : 'Dispatch Recorded'}
                                     </span>
+                                    )
                                   </div>
                                 </div>
-
-                                <div className="rounded-xl overflow-hidden border border-[#E2E5E9] dark:border-[#2B3138] bg-white shadow-xs">
-                                  {notif.body.includes('<html') || notif.body.includes('<table') ? (
-                                    <iframe
-                                      srcDoc={notif.body}
-                                      title={notif.subject || 'Email Preview'}
-                                      className="w-full h-[380px] border-0 rounded-xl bg-white"
-                                      sandbox="allow-same-origin"
-                                    />
-                                  ) : (
-                                    <div className="p-4 text-xs text-[#171A1F] dark:text-[#E8EAED] whitespace-pre-wrap leading-relaxed">
-                                      {notif.body}
-                                    </div>
-                                  )}
-                                </div>
+                                <span className="font-mono text-[10px] text-[#8A919C]">
+                                  {new Date(notif.created_at).toUTCString()}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+
+                              <div className="rounded-xl overflow-hidden border border-[#E2E5E9] dark:border-[#2B3138] bg-white shadow-xs">
+                                {notif.body.includes('<html') || notif.body.includes('<table') ? (
+                                  <iframe
+                                    srcDoc={notif.body}
+                                    title={notif.subject || 'Email Preview'}
+                                    className="w-full h-[380px] border-0 rounded-xl bg-white"
+                                    sandbox="allow-same-origin"
+                                  />
+                                ) : (
+                                  <div className="p-4 text-xs text-[#171A1F] dark:text-[#E8EAED] whitespace-pre-wrap leading-relaxed">
+                                    {notif.body}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             /* Normal Order Journey View */

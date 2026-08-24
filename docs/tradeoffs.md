@@ -51,7 +51,7 @@ This document outlines the core architectural and technical decisions made durin
   1. An evaluator must be able to clone and run the application locally in under 2 minutes without needing an active third-party email API key.
   2. Dispatch and delivery event notifications are fully logged and visible in stdout/logs for demonstration.
   3. Production deployments can enable real transactional emails simply by adding the environment variable.
-- **Trade-off**: Local demos log notifications to terminal rather than sending real SMS/Emails to arbitrary tester inboxes.
+- **Trade-off**: Local demos log notifications to terminal and database audit records rather than requiring third-party credentials to send live emails to arbitrary tester inboxes.
 
 ---
 

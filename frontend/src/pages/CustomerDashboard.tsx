@@ -11,12 +11,10 @@ import {
   Filter, 
   Plus, 
   ArrowUpRight, 
-  Smartphone, 
-  Phone, 
+  Mail, 
   ShieldCheck, 
   X, 
   Check, 
-  BellRing,
   Sparkles,
   RefreshCw,
   Truck,
@@ -57,21 +55,13 @@ const getPipelineProgress = (status: OrderStatus) => {
 };
 
 export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeTabFilter, setActiveTabFilter] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'FAILED'>('ALL');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-
-  // SMS Notifications Modal & Toast State
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-  const [inputPhone, setInputPhone] = useState(user?.phone || '');
-  const [phoneSaving, setPhoneSaving] = useState(false);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
 
   const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -94,30 +84,6 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
     }, 180);
     return () => clearTimeout(timer);
   }, [search]);
-
-  // Keep phone input synced with logged-in user profile
-  useEffect(() => {
-    if (user?.phone) {
-      setInputPhone(user.phone);
-    }
-  }, [user?.phone]);
-
-  const handleSavePhone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPhoneError(null);
-    setPhoneSaving(true);
-    try {
-      await updateProfile({ phone: inputPhone.trim() || undefined });
-      setIsPhoneModalOpen(false);
-      setToastMessage(inputPhone.trim() ? 'SMS alerts activated for ' + inputPhone.trim() : 'SMS alerts disabled');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 4000);
-    } catch (err: any) {
-      setPhoneError(extractErrorMessage(err));
-    } finally {
-      setPhoneSaving(false);
-    }
-  };
 
   // Filter orders according to user intent
   const filteredOrders = orders.filter((o) => {
@@ -158,24 +124,6 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-150">
-      {/* Toast Notification */}
-      {showToast && typeof document !== 'undefined' && createPortal(
-        <div className="fixed top-16 right-6 z-50 max-w-sm w-full bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] rounded-2xl p-4 shadow-xl backdrop-blur-xl flex items-center gap-3 toast-animate">
-          <div className="p-2 rounded-xl bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E] shrink-0">
-            <Check className="w-4 h-4" />
-          </div>
-          <div className="text-xs text-[#171A1F] dark:text-[#E8EAED] font-medium flex-1">
-            {toastMessage}
-          </div>
-          <button 
-            onClick={() => setShowToast(false)}
-            className="text-[#8A919C] hover:text-[#171A1F] dark:hover:text-[#E8EAED] p-1 rounded-lg hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>,
-        document.body
-      )}
 
       {/* Header with Human-Centric Greeting & Action */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-[#E2E5E9] dark:border-[#2B3138]">
@@ -192,39 +140,27 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
             )}
           </div>
           <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
-            Track real-time shipment status, view proof of delivery, and receive automated SMS updates.
+            Track real-time shipment status, view proof of delivery, and receive automated email updates.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* SMS Alert Pill */}
-          <button
-            type="button"
-            onClick={() => {
-              setInputPhone(user?.phone || '+91');
-              setPhoneError(null);
-              setIsPhoneModalOpen(true);
-            }}
-            className="px-3 py-1.5 bg-white dark:bg-[#181C20] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] border border-[#E2E5E9] dark:border-[#2B3138] rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
-            title="Configure real-time SMS delivery notifications"
+          {/* Email Notification Indicator */}
+          <div
+            className="px-3 py-1.5 bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] rounded-lg text-xs flex items-center gap-2 shadow-2xs"
+            title="Transactional email notifications dispatched to registered email"
           >
-            <div className={`p-1 rounded-md ${user?.phone ? 'bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878]' : 'bg-[#F1F3F5] dark:bg-[#1E2328] text-[#8A919C] dark:text-[#737A84]'}`}>
-              <Phone className="w-3 h-3" />
+            <div className="p-1 rounded-md bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4]">
+              <Mail className="w-3 h-3" />
             </div>
             <div className="text-left flex items-center gap-1.5">
-              <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-medium hidden xs:inline">SMS Alerts:</span>
-              {user?.phone ? (
-                <span className="font-mono text-[#287A55] dark:text-[#55A878] font-bold flex items-center gap-1 text-[11px]">
-                  {user.phone}
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#287A55] dark:bg-[#55A878] animate-pulse" />
-                </span>
-              ) : (
-                <span className="text-[#171A1F] dark:text-[#E8EAED] font-semibold flex items-center gap-1 text-[11px]">
-                  Add Mobile <Plus className="w-2.5 h-2.5" />
-                </span>
-              )}
+              <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-medium hidden xs:inline">Email Alerts:</span>
+              <span className="font-mono text-[#3157A6] dark:text-[#6D8ED4] font-bold flex items-center gap-1 text-[11px]">
+                {user?.email}
+                <span className="w-1.5 h-1.5 rounded-full bg-[#287A55] dark:bg-[#55A878] animate-pulse" />
+              </span>
             </div>
-          </button>
+          </div>
 
           <button
             onClick={onCreateOrderClick}
@@ -429,92 +365,7 @@ export const CustomerDashboard: React.FC<Props> = ({ onCreateOrderClick }) => {
         </div>
       )}
 
-      {/* SMS Alert Settings Modal */}
-      {isPhoneModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white dark:bg-[#181C20] border border-[#E2E5E9] dark:border-[#2B3138] rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 relative modal-animate">
-            <div className="flex items-start justify-between border-b border-[#E2E5E9] dark:border-[#2B3138] pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
-                  <Smartphone className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#171A1F] dark:text-[#E8EAED]">Contact & Notification Settings</h3>
-                  <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5]">Transactional notification preferences</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPhoneModalOpen(false)}
-                className="text-[#8A919C] hover:text-[#171A1F] dark:hover:text-[#E8EAED] p-1 rounded-lg hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="bg-[#F1F3F5] dark:bg-[#1E2328] p-3 rounded-xl border border-[#E2E5E9] dark:border-[#2B3138] text-xs space-y-1.5">
-              <div className="font-semibold text-[#171A1F] dark:text-[#E8EAED] text-[11px] flex items-center gap-1">
-                <BellRing className="w-3 h-3 text-[#3157A6] dark:text-[#6D8ED4]" />
-                Trigger Events:
-              </div>
-              <p className="text-[#5F6672] dark:text-[#A7ADB5] text-[11px] leading-relaxed">
-                Receive instant SMS notifications on Carrier Assignment, Out for Delivery, Successful Delivery, and Reschedule notices.
-              </p>
-            </div>
-
-            <form onSubmit={handleSavePhone} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">
-                  Mobile Number (with country code)
-                </label>
-                <div className="relative">
-                  <Phone className="w-3.5 h-3.5 text-[#8A919C] dark:text-[#737A84] absolute left-3 top-2.5" />
-                  <input
-                    type="tel"
-                    value={inputPhone}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) {
-                        setInputPhone('+91');
-                      } else if (!val.startsWith('+')) {
-                        setInputPhone('+91' + val.replace(/\D/g, ''));
-                      } else {
-                        setInputPhone(val);
-                      }
-                    }}
-                    placeholder="+91 98765 43210"
-                    className="w-full linear-input rounded-lg pl-9 pr-3 py-2 text-xs text-[#171A1F] dark:text-[#E8EAED] placeholder-[#8A919C] font-mono shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              {phoneError && (
-                <div className="bg-[#FAF0F0] dark:bg-[#2B1717] border border-[#F2D0D0] dark:border-[#432323] p-2.5 rounded-lg text-xs text-[#B54848] dark:text-[#D56B6B]">
-                  {phoneError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E5E9] dark:border-[#2B3138]">
-                <button
-                  type="button"
-                  onClick={() => setIsPhoneModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#5F6672] dark:text-[#A7ADB5] hover:text-[#171A1F] dark:hover:text-[#E8EAED] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={phoneSaving}
-                  className="stripe-btn-primary text-xs py-1.5 px-4 rounded-lg flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {phoneSaving ? 'Saving...' : 'Save Preferences'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Order Detail Modal */}
       {selectedOrderId && (

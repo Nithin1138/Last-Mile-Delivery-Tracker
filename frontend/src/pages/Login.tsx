@@ -429,7 +429,7 @@ export const Login: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-[#171A1F] dark:text-[#E8EAED] mb-1">
-                      Mobile Phone <span className="text-[#8A919C] text-[10px] font-normal">(SMS)</span>
+                      Mobile Phone <span className="text-[#8A919C] text-[10px] font-normal">(Optional)</span>
                     </label>
                     <div className="relative">
                       <Phone className="w-3.5 h-3.5 text-[#8A919C] dark:text-[#737A84] absolute left-3 top-2.5" />

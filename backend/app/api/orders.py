@@ -854,7 +854,7 @@ def get_assignment_decisions(
 
 
 # ---------------------------------------------------------------------------
-# Order Notifications Audit Trail (SMS & Email)
+# Order Notifications Audit Trail (Transactional Email)
 # ---------------------------------------------------------------------------
 @router.get("/{order_id}/notifications", response_model=list[NotificationResponse])
 def get_order_notifications(
@@ -862,7 +862,7 @@ def get_order_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all dispatched SMS and email notifications for an order with RBAC."""
+    """Get all dispatched transactional email notifications for an order with RBAC."""
     parsed_id = _parse_uuid(order_id, "order ID")
     order = db.query(Order).filter(Order.id == parsed_id).first()
     if not order:
