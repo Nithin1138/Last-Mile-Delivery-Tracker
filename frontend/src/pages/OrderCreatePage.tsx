@@ -29,10 +29,10 @@ interface Props {
 
 export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
   // Form State
-  const [pickupAddress, setPickupAddress] = useState('Block B, Connaught Place, New Delhi');
-  const [pickupPincode, setPickupPincode] = useState('110001');
-  const [dropAddress, setDropAddress] = useState('Hiranandani Gardens, Powai, Mumbai');
-  const [dropPincode, setDropPincode] = useState('400076');
+  const [pickupAddress, setPickupAddress] = useState('Road No. 36, Jubilee Hills, Hyderabad');
+  const [pickupPincode, setPickupPincode] = useState('500034');
+  const [dropAddress, setDropAddress] = useState('Benz Circle, MG Road, Vijayawada');
+  const [dropPincode, setDropPincode] = useState('520010');
 
   // Package Dimensions
   const [lengthCm, setLengthCm] = useState<number>(50);
@@ -50,7 +50,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [activePreset, setActivePreset] = useState<'inter' | 'intra_delhi' | 'heavy' | null>('inter');
+  const [activePreset, setActivePreset] = useState<'inter' | 'intra' | 'heavy' | null>('inter');
   const [activeSize, setActiveSize] = useState<'small' | 'standard' | 'large' | null>('standard');
 
   // Computed Volumetric Weight for instant feedback
@@ -59,13 +59,13 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
   const isVolumetricHigher = volumetricWeightKg > actualWeightKg;
 
   // Preset Route Benchmarks for cognitive ease
-  const applyPreset = (type: 'inter' | 'intra_delhi' | 'heavy') => {
+  const applyPreset = (type: 'inter' | 'intra' | 'heavy') => {
     setActivePreset(type);
     if (type === 'inter') {
-      setPickupAddress('Block B, Connaught Place, New Delhi');
-      setPickupPincode('110001');
-      setDropAddress('Hiranandani Gardens, Powai, Mumbai');
-      setDropPincode('400076');
+      setPickupAddress('Road No. 36, Jubilee Hills, Hyderabad');
+      setPickupPincode('500034');
+      setDropAddress('Benz Circle, MG Road, Vijayawada');
+      setDropPincode('520010');
       setLengthCm(50);
       setBreadthCm(40);
       setHeightCm(30);
@@ -73,11 +73,11 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
       setOrderType('B2C');
       setPaymentType('COD');
       setActiveSize('standard');
-    } else if (type === 'intra_delhi') {
-      setPickupAddress('Connaught Place, Central Delhi');
-      setPickupPincode('110001');
-      setDropAddress('Vasant Kunj, South Delhi');
-      setDropPincode('110070');
+    } else if (type === 'intra') {
+      setPickupAddress('Abids Commercial Centre, Hyderabad');
+      setPickupPincode('500001');
+      setDropAddress('Mindspace Cyber Towers, HITEC City, Madhapur');
+      setDropPincode('500081');
       setLengthCm(25);
       setBreadthCm(20);
       setHeightCm(15);
@@ -86,10 +86,10 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
       setPaymentType('PREPAID');
       setActiveSize('small');
     } else if (type === 'heavy') {
-      setPickupAddress('Okhla Industrial Area Phase III, Delhi');
-      setPickupPincode('110020');
-      setDropAddress('Whitefield EPIP Zone, Bangalore');
-      setDropPincode('560066');
+      setPickupAddress('Gajuwaka Industrial Hub, Visakhapatnam');
+      setPickupPincode('530045');
+      setDropAddress('Kukatpally Commercial Complex, Hyderabad');
+      setDropPincode('500090');
       setLengthCm(80);
       setBreadthCm(60);
       setHeightCm(50);
@@ -237,18 +237,18 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                 : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
             }`}
           >
-            Delhi ➔ Mumbai (Inter)
+            Hyderabad ➔ Vijayawada (Inter)
           </button>
           <button
             type="button"
-            onClick={() => applyPreset('intra_delhi')}
+            onClick={() => applyPreset('intra')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs border ${
-              activePreset === 'intra_delhi'
+              activePreset === 'intra'
                 ? 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border-[#3157A6]/40 dark:border-[#6D8ED4]/40 font-bold'
                 : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
             }`}
           >
-            Delhi ➔ Delhi (Intra)
+            Hyderabad ➔ HITEC City (Intra)
           </button>
           <button
             type="button"
@@ -259,7 +259,7 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
                 : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
             }`}
           >
-            Commercial B2B (28kg)
+            Visakhapatnam ➔ Hyderabad (B2B Heavy)
           </button>
         </div>
       </div>
