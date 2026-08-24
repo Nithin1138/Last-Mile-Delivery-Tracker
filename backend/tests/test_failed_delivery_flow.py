@@ -117,7 +117,7 @@ def test_complete_failed_delivery_reschedule_and_reassign(client, db):
         json={"mode": "auto"},
     )
     assert res.status_code == 200, f"Assignment failed: {res.text}"
-    assigned_agent_id = res.json()["assignment"]["agent_id"]
+    assigned_agent_id = res.json()["decision"]["agent_id"]
 
     # Identify which agent was assigned first
     db.refresh(agent1); db.refresh(agent2)
