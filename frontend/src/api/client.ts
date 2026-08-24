@@ -41,8 +41,17 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Format structured API error message
+// Format structured API error message with cold-start awareness
 export function extractErrorMessage(error: any): string {
+  if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+    return 'The backend server took longer to respond (waking up cloud instance). Please retry in a few seconds.';
+  }
+  if (error.message === 'Network Error' || !error.response) {
+    return 'Connecting to backend server... If waking from idle, please retry in a few moments.';
+  }
+  if (error.response?.status === 502 || error.response?.status === 503 || error.response?.status === 504) {
+    return 'Backend server is initializing. Please wait a moment and retry.';
+  }
   if (error.response?.data?.error?.message) {
     return error.response.data.error.message;
   }

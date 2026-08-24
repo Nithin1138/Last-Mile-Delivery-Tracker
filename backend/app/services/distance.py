@@ -1,7 +1,31 @@
-"""Haversine distance calculation between two geographic coordinates."""
+"""
+Distance & Proximity Calculation Service.
+
+Architecture:
+- Provides a clean `DistanceProvider` interface for spatial proximity calculations.
+- `HaversineDistanceProvider` (Default): Deterministic Great-Circle distance formula
+  executing in sub-millisecond time with zero external API dependencies, ideal for
+  automated testability and reproducible candidate ranking.
+- Pluggable extension point: Future enterprise providers (e.g. OSRM, Google Distance Matrix)
+  can implement the same DistanceProvider interface for turn-by-turn road network routing.
+"""
 
 import math
-from typing import Optional, Tuple
+from typing import Optional, Protocol
+
+
+class DistanceProvider(Protocol):
+    """Protocol for pluggable distance and proximity calculation providers."""
+
+    def calculate(
+        self,
+        lat1: Optional[float],
+        lon1: Optional[float],
+        lat2: Optional[float],
+        lon2: Optional[float],
+    ) -> Optional[float]:
+        ...
+
 
 # Earth's mean radius in kilometers
 EARTH_RADIUS_KM = 6371.0

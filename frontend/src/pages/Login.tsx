@@ -309,7 +309,10 @@ export const Login: React.FC = () => {
                   className="w-full stripe-btn-primary py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
-                    <span>Authenticating...</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Authenticating (connecting to server)...</span>
+                    </div>
                   ) : (
                     <>
                       <span>Sign In</span>
