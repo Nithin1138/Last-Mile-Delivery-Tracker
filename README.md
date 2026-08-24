@@ -108,6 +108,10 @@ flowchart TD
 
 The application comes pre-seeded with realistic operational data. For a detailed step-by-step walkthrough, see [docs/demo-guide.md](docs/demo-guide.md).
 
+> **Evaluation Notes**:
+> - **Render Backend Cold-Start**: Free-tier Render instances spin down when idle; the first request may take 30–60s to wake the container. Subsequent requests execute with sub-millisecond database queries.
+> - **Haversine Proximity Metric**: Agent proximity ranking computes Great-Circle Haversine distance (straight-line) rather than road routing — an intentional design decision for determinism, zero external API latency, and 100% offline testability.
+
 ```text
 1. Customer Login → Create order (50×40×30 cm, 8 kg, COD)
    → Observe price: Volumetric 12 kg, Base ₹290, COD ₹32.25, Total ₹322.25

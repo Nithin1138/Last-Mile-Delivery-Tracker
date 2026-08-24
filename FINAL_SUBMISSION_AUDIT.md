@@ -76,10 +76,11 @@ The skipped test (`test_live_resend_external_gateway_integration`) is the option
 
 ---
 
-## 5. Known Limitations
+## 5. Known Limitations & Engineering Trade-Offs
 
-- **Live email delivery**: Requires valid `RESEND_API_KEY` with provider quota. The automated suite does not depend on external providers by design.
-- **Render cold start**: Free-tier backend may take 30–60 seconds on first request after inactivity.
+- **Render Cold-Start Latency**: The free-tier Render backend spins down after a period of inactivity. The initial cold-start request may take 30–60 seconds to wake the service container. Subsequent requests execute with sub-millisecond database queries.
+- **Haversine Distance vs. Road Routing**: Proximity ranking computes Great-Circle Haversine distance (straight-line) rather than turn-by-turn road network routing. This is an intentional engineering trade-off that eliminates third-party API dependencies/billing, guarantees sub-millisecond execution, and enables 100% deterministic offline testability.
+- **Live Email Delivery**: Requires a valid `RESEND_API_KEY` with active quota. The automated test suite is intentionally decoupled from external provider quotas by default using the `ConsoleNotificationProvider` with full database audit logging.
 
 ---
 
