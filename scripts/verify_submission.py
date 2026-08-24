@@ -171,31 +171,57 @@ def check_frontend_build():
     print_pass("Frontend TypeScript build succeeded with zero errors.")
 
 
+def find_supported_python():
+    import shutil
+    for cmd_name in ["python3.12", "python3.11", "python3.10", "python3"]:
+        p = shutil.which(cmd_name)
+        if p:
+            try:
+                out = subprocess.check_output([p, "-c", "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"], text=True).strip()
+                major, minor = map(int, out.split("."))
+                if (major == 3 and 10 <= minor <= 13):
+                    return p
+            except Exception:
+                continue
+    return sys.executable
+
+
 def run_backend_tests():
     print_step("Running complete backend pytest suite")
-    venv_pytest = BACKEND_DIR / "venv" / "bin" / "pytest"
+    venv_dir = BACKEND_DIR / "venv"
+    venv_pytest = venv_dir / "bin" / "pytest"
+
     if venv_pytest.exists():
         cmd = [str(venv_pytest), "backend/tests", "-v"]
     else:
-        cmd = ["pytest", "backend/tests", "-v"]
+        # Check if the active Python environment has dependencies installed
+        try:
+            import fastapi
+            import sqlalchemy
+            import pydantic_settings
+            import pytest
+            cmd = [sys.executable, "-m", "pytest", "backend/tests", "-v"]
+        except ImportError:
+            py_bin = find_supported_python()
+            print(f"   🐍 Fresh clone / extracted ZIP detected: creating backend venv with {py_bin} and installing dependencies...")
+            subprocess.run([py_bin, "-m", "venv", str(venv_dir)], check=True)
+            venv_pip = venv_dir / "bin" / "pip"
+            subprocess.run([str(venv_pip), "install", "-r", str(BACKEND_DIR / "requirements.txt")], check=True)
+            cmd = [str(venv_dir / "bin" / "pytest"), "backend/tests", "-v"]
+
+    env = dict(os.environ)
+    if "TEST_DATABASE_URL" not in env:
+        env["TEST_DATABASE_URL"] = "postgresql://nithin@localhost:5432/delivery_tracker_test"
 
     res = subprocess.run(
         cmd,
         cwd=str(ROOT_DIR),
         capture_output=True,
         text=True,
+        env=env,
     )
     if res.returncode != 0:
-        # Fallback to python3 -m pytest
-        fallback_res = subprocess.run(
-            ["python3", "-m", "pytest", "backend/tests", "-v"],
-            cwd=str(ROOT_DIR),
-            capture_output=True,
-            text=True,
-        )
-        if fallback_res.returncode != 0:
-            print_fail(f"Backend test suite failed:\n{res.stderr}\n{res.stdout}")
-        res = fallback_res
+        print_fail(f"Backend test suite failed:\n{res.stderr}\n{res.stdout}")
     
     # Check that summary line confirms all tests passed
     summary_match = re.search(r"(\d+)\s+passed", res.stdout)
