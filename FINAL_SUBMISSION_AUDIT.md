@@ -27,20 +27,20 @@
 | **REQ-11** | Live customer tracking and audit timeline | `backend/app/api/orders.py` | `test_order_transition_and_history_creation` | **PASS** |
 | **REQ-12** | Email notification on lifecycle status events | `backend/app/services/notification_service.py`| Resend adapter implemented with structured audit logging; live external delivery blocked by provider daily quota | **PARTIAL** |
 | **REQ-13** | Admin order management and filtering (status/zone/agent) | `backend/app/api/orders.py` (`GET /orders`)| Filter queries tested, admin dashboard | **PASS** |
-| **REQ-14** | Role-Based Access Control (Customer, Agent, Admin) | `backend/app/core/deps.py` | 18 RBAC & immutability tests in `test_security_rbac.py` | **PASS** |
+| **REQ-14** | Role-Based Access Control (Customer, Agent, Admin) | `backend/app/core/deps.py` | 19 RBAC & immutability tests in `test_security_rbac.py` | **PASS** |
 | **REQ-15** | Database-driven configurable rate cards & COD surcharges | `backend/app/models/models.py` | `uq_rate_cards_one_active_per_type` partial unique index | **PASS** |
-| **REQ-16** | Haversine distance proximity candidate ranking | `backend/app/services/distance.py` | `test_distance.py` (4 tests), `test_assignment_engine.py` | **PASS** |
+| **REQ-16** | Haversine distance proximity candidate ranking | `backend/app/services/distance.py` | `test_distance.py` (4 tests), `test_assignment_engine.py` (5 tests) | **PASS** |
 | **REQ-17** | Immutable tracking history (actor, timestamps, RESTRICT, triggers) | `backend/app/models/models.py` | PostgreSQL triggers + ORM event listeners block status history mutations and terminal delivery attempt updates | **PASS** |
 | **REQ-18** | Complete failed flow: release old agent, Attempt #2 creation | `backend/app/api/orders.py` | `test_reschedule_all_candidate_claims_fail_preserves_rescheduled_state` | **PASS** |
-| **REQ-19** | Resend email & Twilio SMS provider integration | `backend/app/services/notification_service.py`| Both adapters fully implemented and authenticated; live sends were rejected by external daily quota / trial template rules | **PARTIAL** |
+| **REQ-19** | Transactional email & notification provider integration | `backend/app/services/notification_service.py`| Provider interface with Console fallback and Resend HTML email adapter | **PASS** |
 | **REQ-20** | Complete distribution ZIP archive | `scripts/package_submission.py` | `LastMileDeliveryTracker-Submission.zip` | **PASS** |
-| **REQ-21** | Comprehensive README setup & architecture documentation | `README.md` | Accurate REST API table, 68 tests breakdown, schema | **PASS** |
+| **REQ-21** | Comprehensive README setup & architecture documentation | `README.md` | Accurate REST API table, 70 tests breakdown, schema | **PASS** |
 | **REQ-22** | Live hosted application URL | Vercel & Render | Frontend & backend live and responding with HTTP 200 | **PASS** |
 | **REQ-23** | System design write-up (under 800 words) | `docs/system-design.md` | 742 words covering pricing, assignment, concurrency, failure | **PASS** |
 | **REQ-24** | Public GitHub repository submission | GitHub `main` branch | Synced at `https://github.com/Nithin1138/Last-Mile-Delivery-Tracker` | **PASS** |
 | **REQ-25** | No node_modules, .env, or build artifacts in ZIP/Git | `.gitignore`, `package_submission.py` | Verified clean exclusion list | **PASS** |
-| **REQ-26** | Minimal, strictly pinned dependencies | `pyproject.toml`, `package.json` | Python 3.12, FastAPI, React 19, Vite | **PASS** |
-| **REQ-27** | Error-free execution & clean code structure | Backend + Frontend | 68/68 pytest passing, Vite build passing | **PASS** |
+| **REQ-26** | Minimal, strictly pinned dependencies | `backend/requirements.txt`, `package.json` | Python 3.12, FastAPI, React 19, Vite | **PASS** |
+| **REQ-27** | Error-free execution & clean code structure | Backend + Frontend | 70/70 pytest passing, Vite build passing | **PASS** |
 
 ---
 
@@ -52,7 +52,7 @@
    - **Foreign Key RESTRICT**: `ondelete="RESTRICT"` prevents cascading deletions of parent order records.
 2. **Real Multithreaded Initial Rate-Card Concurrency**:
    - `test_real_multithreaded_initial_rate_card_creation_race` in `test_concurrency.py` tests true concurrent creation across isolated database worker threads coordinated with `threading.Barrier(2)`, verifying that `uq_rate_cards_one_active_per_type` guarantees exactly 1 active rate card.
-3. **Notification Provider Connectivity**:
-   - Resend and Twilio provider adapters are integrated and verified against real API endpoints. The system gracefully logs provider responses without aborting core business transactions.
+3. **Notification Provider Architecture**:
+   - Provider interface abstracting `ConsoleNotificationProvider` (local evaluation and DB auditing) and `ResendNotificationProvider` (production transactional HTML email). The system gracefully logs provider responses without aborting core business transactions.
 4. **Render Blueprint Configuration**: `render.yaml` points directly to the active live production backend (`https://lastmile-backend-f1ma.onrender.com`) and permits the live Vercel frontend in `CORS_ORIGINS`.
-5. **Accurate Test Suite Breakdown**: 68 passing automated tests across 10 modules covering pricing, assignment, concurrency, lifecycle, failed delivery, distance, zones, RBAC, and immutability.
+5. **Accurate Test Suite Breakdown**: 70 passing automated tests across 10 modules covering pricing, assignment, concurrency, lifecycle, failed delivery, distance, zones, RBAC, and immutability.

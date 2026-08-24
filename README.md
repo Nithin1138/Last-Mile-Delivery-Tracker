@@ -76,18 +76,18 @@ The application comes pre-seeded with realistic operational data (demo accounts,
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 ORM, Pydantic v2, PostgreSQL 18
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
 - **Security**: JWT authentication (HS256), bcrypt password hashing, server-side RBAC
-- **Testing**: Pytest (68 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
+- **Testing**: Pytest (70 unit, security, integration, notification, database immutability triggers and multithreaded concurrency tests)
 
 ---
 
-## 🔔 Notification Engine (Email & SMS)
+## 🔔 Transactional Notification Engine
 
-The platform includes transactional notification provider abstractions with graceful failure resilience:
+The platform implements a clean provider abstraction for customer lifecycle notifications:
 
-- **Email Provider** (`NotificationProvider` ➔ `ResendNotificationProvider`): Sends transactional HTML emails on order lifecycle events (Created, Assigned, Status Updates, Delivery Failed, Rescheduled). Configured via `RESEND_API_KEY` and `NOTIFICATION_FROM_EMAIL`. (Supports `RESEND_TEST_EMAIL` for developer testing).
-- **SMS Provider** (`SmsProvider` ➔ `TwilioSmsProvider`): Sends instant SMS text alerts to customer mobile numbers via Twilio REST API. Configured via `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. (Supports `TWILIO_TEST_PHONE` for testing trial accounts).
-- **Zero-Config Local Evaluation**: Automatically falls back to `ConsoleNotificationProvider` and `ConsoleSmsProvider` when API keys are not present in `.env`, logging structured payloads without failing transactions.
-- **Fault-Tolerant & Audit Logged**: External provider downtimes or daily quota exhaustion never abort core database transactions. Every notification attempt is tracked in the `notifications` audit table with delivery status (`SENT` / `FAILED`) and provider response details.
+- **Modular Provider Interface** (`NotificationProvider`):
+  - **Console Provider** (`ConsoleNotificationProvider`): Default zero-dependency provider for local development and offline evaluation. Dispatches structured logs and persists audit records directly into PostgreSQL.
+  - **Production Email Provider** (`ResendNotificationProvider`): Sends branded, responsive HTML emails via the Resend API when `RESEND_API_KEY` is configured.
+- **Fault-Tolerant Non-Blocking Architecture**: External API latency, network timeouts, or provider downtime never abort core database transactions. Every notification attempt is tracked immutably in the `notifications` audit table with delivery status (`SENT` / `FAILED`).
 
 ---
 
@@ -250,7 +250,7 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🧪 Running Automated Tests
+## 🧪 Comprehensive Automated Test Suite (70 Tests)
 
 Run the complete backend test suite:
 
@@ -260,17 +260,17 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-### Complete Test Suite Coverage (68 Tests):
-- `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.
-- `test_security_rbac.py` (18 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, complete lifecycle state machine and terminal lock validation, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.
-- `test_concurrency.py` (7 tests): True multithreaded PostgreSQL concurrent claim race conditions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via SELECT FOR UPDATE, initial active rate card concurrent creation race conflict handling through FastAPI HTTP endpoint proving exact `[200, 409]` conflict behavior, capacity limits, release mechanics.
-- `test_pricing_engine.py` (8 tests): Volumetric weight, chargeable weight, B2B/B2C, INTRA/INTER rates, COD formulas, canonical worked example.
-- `test_order_lifecycle.py` (5 tests): State machine transitions, illegal transitions, cancellation rules, append-only history.
-- `test_assignment_engine.py` (5 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, fallback handling.
+### Complete Test Suite Coverage (70 Tests):
+- `test_security_rbac.py` (19 tests): Role injection prevention during registration, status update authorization, multi-tenant order isolation, delivery attempt protection, capacity boundaries, strict admin-only GET protection for zones, areas, rate-cards, and COD surcharges, admin order creation validation for nonexistent customers, inactive accounts, and agent IDs, admin agent updates persisting coordinates and all fields, ORM append-only history and DeliveryAttempt immutability listeners, PENDING to terminal transition and subsequent lock, complete lifecycle state machine and terminal lock validation, and PostgreSQL engine-level triggers blocking direct SQL mutations on audit tables and terminal delivery attempts.
+- `test_pricing_engine.py` (8 tests): Volumetric weight calculation, chargeable weight determination, B2B vs. B2C rate cards, INTRA vs. INTER zone pricing, COD surcharge formulas, and the canonical worked evaluation example.
+- `test_concurrency.py` (7 tests): True multithreaded PostgreSQL concurrent claim race conditions across isolated threads and sessions, atomic claim rowcount semantics, inactive agent rejection, concurrent duplicate order assignment prevention via `SELECT FOR UPDATE`, initial active rate card concurrent creation race conflict handling through FastAPI HTTP endpoint proving exact `[200, 409]` conflict behavior, capacity limits, and release mechanics.
+- `test_api.py` (7 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze, structured 400 error responses on malformed UUID inputs, order notification list endpoints, and concurrent rate card versioning safety.
 - `test_notifications.py` (6 tests): Resend email provider, Twilio SMS provider, Console provider fallbacks, graceful error handling, and structured database notification audit row persistence across lifecycle events.
-- `test_api.py` (6 tests): RBAC server-side enforcement, idempotency key duplicate prevention, actor-scoped idempotency isolation, rate card versioning price freeze, structured 400 error responses on malformed UUID inputs, and concurrent rate card versioning safety.
-- `test_zone_service.py` (4 tests): Pincode resolution, unknown pincode rejection, inactive area rejection.
-- `test_distance.py` (4 tests): Haversine accuracy (Delhi–Mumbai sanity check).
+- `test_order_lifecycle.py` (5 tests): State machine transitions matrix, illegal transitions, cancellation rules, failure transitions from `ASSIGNED` / `PICKED_UP` / `IN_TRANSIT`, and append-only status history auditing.
+- `test_assignment_engine.py` (5 tests): Haversine distance ranking, zero-distance preservation, zone matching, availability filtering, and fallback handling.
+- `test_failed_delivery_flow.py` (5 tests): End-to-end failed delivery flow (Created ➔ Assigned ➔ Out for Delivery ➔ Failed ➔ Rescheduled ➔ Auto-Assigned Attempt #2 ➔ Delivered), rejection of rescheduling non-failed orders, no-agent reschedule state preservation, propagation of unexpected assignment errors, and concurrency race collision resilience where all candidate claims fail while preserving the outer reschedule transaction state.
+- `test_zone_service.py` (4 tests): Pincode resolution, unknown pincode rejection, and inactive area rejection.
+- `test_distance.py` (4 tests): Haversine mathematical accuracy (Delhi–Mumbai sanity check, coordinates distance formula).
 
 ---
 

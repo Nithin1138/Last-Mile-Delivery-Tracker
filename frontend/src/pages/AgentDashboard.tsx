@@ -308,20 +308,20 @@ export const AgentDashboard: React.FC = () => {
             {error}
           </div>
         ) : orders.length === 0 ? (
-          <div className="p-8 text-center text-[#5F6672] dark:text-[#A7ADB5] stripe-card rounded-2xl flex flex-col items-center justify-center gap-2.5 max-w-md mx-auto border border-[#E2E5E9] dark:border-[#2B3138]">
-            <div className="w-10 h-10 rounded-full bg-[#F1F3F5] dark:bg-[#1E2328] flex items-center justify-center text-[#3157A6] dark:text-[#6D8ED4] border border-[#E2E5E9] dark:border-[#2B3138]">
-              <Truck className="w-5 h-5" />
+          <div className="py-7 px-6 text-center text-[#5F6672] dark:text-[#A7ADB5] bg-white dark:bg-[#181C20] rounded-2xl flex flex-col items-center justify-center gap-2 max-w-sm mx-auto border border-[#E2E5E9] dark:border-[#2B3138] shadow-xs animate-in fade-in">
+            <div className="w-9 h-9 rounded-full bg-[#EBF1FA] dark:bg-[#182232] flex items-center justify-center text-[#3157A6] dark:text-[#6D8ED4] border border-[#D0DEF2] dark:border-[#25354E]">
+              <Truck className="w-4 h-4" />
             </div>
-            <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-sm">Queue is clear</div>
-            <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] max-w-xs leading-relaxed">
-              No deliveries are currently assigned. New assignments will appear here automatically.
+            <div className="font-bold text-[#171A1F] dark:text-[#E8EAED] text-xs">Queue is clear</div>
+            <p className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] max-w-xs leading-normal">
+              No shipments currently assigned. Dispatches will appear here automatically.
             </p>
             <button
               onClick={() => fetchOrders()}
-              className="mt-1 stripe-btn-secondary px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              className="mt-1 stripe-btn-secondary px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <RefreshCw className="w-3 h-3" />
-              Refresh Queue
+              <span>Check for New Assignments</span>
             </button>
           </div>
         ) : (
