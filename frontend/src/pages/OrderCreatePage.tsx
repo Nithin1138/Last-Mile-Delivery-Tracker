@@ -208,16 +208,16 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-150">
-      {/* Header Banner with Trust Indicators */}
-      <div className="pb-3 border-b border-[#E2E5E9] dark:border-[#2B3138] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED]">
-              Shipment Booking & Dynamic Rate Engine
+      {/* Header Banner with In-Line 1-Click Scenarios */}
+      <div className="pb-3.5 border-b border-[#E2E5E9] dark:border-[#2B3138] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-xl font-bold tracking-tight text-[#171A1F] dark:text-[#E8EAED] whitespace-nowrap">
+              Shipment Booking & Rate Engine
             </h1>
-            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E] px-2 py-0.5 rounded-md">
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-[#EAF5F0] dark:bg-[#16271E] text-[#287A55] dark:text-[#55A878] border border-[#C8E5D6] dark:border-[#203D2E] px-2 py-0.5 rounded-full shadow-2xs">
               <Zap className="w-3 h-3 text-[#287A55] dark:text-[#55A878]" />
-              Guaranteed Live Quotation
+              Guaranteed Live Quote
             </span>
           </div>
           <p className="text-xs text-[#5F6672] dark:text-[#A7ADB5] mt-0.5">
@@ -225,41 +225,74 @@ export const OrderCreatePage: React.FC<Props> = ({ onOrderCreated }) => {
           </p>
         </div>
 
-        {/* Quick Route Presets */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-medium hidden sm:inline">1-Click Scenarios:</span>
+        {/* In-Line 1-Click Route Presets */}
+        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+          <span className="text-[11px] text-[#5F6672] dark:text-[#A7ADB5] font-semibold flex items-center gap-1 mr-0.5">
+            <Sparkles className="w-3 h-3 text-[#3157A6] dark:text-[#6D8ED4]" />
+            Scenarios:
+          </span>
+
           <button
             type="button"
             onClick={() => applyPreset('inter')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs border ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs border ${
               activePreset === 'inter'
-                ? 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border-[#3157A6]/40 dark:border-[#6D8ED4]/40 font-bold'
+                ? 'bg-[#3157A6] text-white border-[#3157A6] shadow-xs'
                 : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
             }`}
           >
-            Hyderabad ➔ Vijayawada (Inter)
+            <span>Hyd ➔ Vijayawada</span>
+            <span
+              className={`text-[9.5px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                activePreset === 'inter'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4]'
+              }`}
+            >
+              Inter
+            </span>
           </button>
+
           <button
             type="button"
             onClick={() => applyPreset('intra')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs border ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs border ${
               activePreset === 'intra'
-                ? 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border-[#3157A6]/40 dark:border-[#6D8ED4]/40 font-bold'
+                ? 'bg-[#3157A6] text-white border-[#3157A6] shadow-xs'
                 : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
             }`}
           >
-            Hyderabad ➔ HITEC City (Intra)
+            <span>Hyd ➔ HITEC City</span>
+            <span
+              className={`text-[9.5px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                activePreset === 'intra'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[#EBF7EE] dark:bg-[#162B1D] text-[#287A55] dark:text-[#55A878]'
+              }`}
+            >
+              Intra
+            </span>
           </button>
+
           <button
             type="button"
             onClick={() => applyPreset('heavy')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs border ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs border ${
               activePreset === 'heavy'
-                ? 'bg-[#EBF1FA] dark:bg-[#182232] text-[#3157A6] dark:text-[#6D8ED4] border-[#3157A6]/40 dark:border-[#6D8ED4]/40 font-bold'
+                ? 'bg-[#3157A6] text-white border-[#3157A6] shadow-xs'
                 : 'bg-white dark:bg-[#181C20] text-[#5F6672] dark:text-[#A7ADB5] border-[#E2E5E9] dark:border-[#2B3138] hover:bg-[#F1F3F5] dark:hover:bg-[#1E2328] hover:text-[#171A1F] dark:hover:text-[#E8EAED]'
             }`}
           >
-            Visakhapatnam ➔ Hyderabad (B2B Heavy)
+            <span>Vizag ➔ Hyd</span>
+            <span
+              className={`text-[9.5px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                activePreset === 'heavy'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[#FAF3E8] dark:bg-[#292014] text-[#A66A16] dark:text-[#D19A4A]'
+              }`}
+            >
+              28kg
+            </span>
           </button>
         </div>
       </div>
