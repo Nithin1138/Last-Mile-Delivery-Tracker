@@ -596,23 +596,26 @@ def assign_order(
     else:
         decision = auto_assign_order(db, order, current_user.id)
 
+    # Resolve assigned agent name for notification + response
+    agent = db.query(DeliveryAgent).options(
+        joinedload(DeliveryAgent.user)
+    ).filter(DeliveryAgent.id == order.agent_id).first()
+    agent_name = agent.user.name if agent and agent.user else "Agent"
+
     # Notify customer
     if order.customer:
-        agent = db.query(DeliveryAgent).options(
-            joinedload(DeliveryAgent.user)
-        ).filter(DeliveryAgent.id == order.agent_id).first()
-        agent_name = agent.user.name if agent and agent.user else "Agent"
         notify_order_assigned(db, order, order.customer, agent_name)
 
     db.commit()
 
     return {
         "message": "Agent assigned successfully",
-        "assignment": {
+        "decision": {
             "agent_id": str(decision.selected_agent_id),
-            "mode": decision.selection_mode.value,
+            "selected_agent_name": agent_name,
+            "selection_mode": decision.selection_mode.value,
             "candidate_count": decision.candidate_count,
-            "distance_km": decision.selected_distance_km,
+            "selected_distance_km": decision.selected_distance_km,
             "reason": decision.reason,
         },
     }
