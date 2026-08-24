@@ -27,6 +27,7 @@ from app.config import settings
 # Explicitly ensure settings object has RESEND_API_KEY disabled during test runs
 settings.RESEND_API_KEY = None
 
+from uuid import uuid4
 from app.models.models import (
     User, RoleEnum, Zone, Area, RateCard, CODSurcharge,
     OrderTypeEnum, ZoneRelationEnum, DeliveryAgent, AgentStatusEnum
@@ -74,6 +75,7 @@ def db():
     try:
         yield session
     finally:
+        session.rollback()
         session.close()
 
 
@@ -95,7 +97,7 @@ def client(db):
 @pytest.fixture
 def admin_fixture(db):
     user = User(
-        email="admin_fixture@lastmile.dev",
+        email=f"admin_fixture_{uuid4().hex[:6]}@lastmile.dev",
         password_hash=hash_password("adminpass123"),
         name="Admin Fixture",
         role=RoleEnum.ADMIN,
@@ -108,7 +110,7 @@ def admin_fixture(db):
 @pytest.fixture
 def customer_fixture(db):
     user = User(
-        email="customer_fixture@lastmile.dev",
+        email=f"customer_fixture_{uuid4().hex[:6]}@lastmile.dev",
         password_hash=hash_password("customerpass123"),
         name="Customer Fixture",
         role=RoleEnum.CUSTOMER,
@@ -121,7 +123,7 @@ def customer_fixture(db):
 @pytest.fixture
 def agent_fixture(db):
     user = User(
-        email="agent_fixture@lastmile.dev",
+        email=f"agent_fixture_{uuid4().hex[:6]}@lastmile.dev",
         password_hash=hash_password("agentpass123"),
         name="Agent Fixture",
         role=RoleEnum.AGENT,

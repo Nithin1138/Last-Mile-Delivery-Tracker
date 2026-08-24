@@ -29,6 +29,7 @@ frontend/dist/
 .vscode/
 *.swp
 *.swo
+pyrightconfig.json
 
 # Assignment Source Files
 *.pdf

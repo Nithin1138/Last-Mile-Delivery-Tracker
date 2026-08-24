@@ -15,6 +15,7 @@ Performs an automated evaluation audit before packaging:
 import os
 import sys
 import re
+import importlib.util
 import py_compile
 import subprocess
 from pathlib import Path
@@ -200,13 +201,11 @@ def run_backend_tests():
         cmd = [str(venv_pytest), "backend/tests", "-v"]
     else:
         # Check if the active Python environment has dependencies installed
-        try:
-            import fastapi
-            import sqlalchemy
-            import pydantic_settings
-            import pytest
+        required_pkgs = ["fastapi", "sqlalchemy", "pydantic_settings", "pytest"]
+        has_all_pkgs = all(importlib.util.find_spec(pkg) is not None for pkg in required_pkgs)
+        if has_all_pkgs:
             cmd = [sys.executable, "-m", "pytest", "backend/tests", "-v"]
-        except ImportError:
+        else:
             py_bin = find_supported_python()
             print(f"   🐍 Fresh clone / extracted ZIP detected: creating backend venv with {py_bin} and installing dependencies...")
             subprocess.run([py_bin, "-m", "venv", str(venv_dir)], check=True)
