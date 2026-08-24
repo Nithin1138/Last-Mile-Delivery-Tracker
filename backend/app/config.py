@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # Transactional Email Notifications
     RESEND_API_KEY: Optional[str] = None
-    NOTIFICATION_FROM_EMAIL: str = "noreply@lastmile.dev"
+    NOTIFICATION_FROM_EMAIL: str = "onboarding@resend.dev"
     # Set RESEND_TEST_EMAIL to your Resend account email to receive all notifications
     # during testing (Resend free tier only sends to the account owner's email)
     RESEND_TEST_EMAIL: Optional[str] = None

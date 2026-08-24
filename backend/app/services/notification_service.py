@@ -55,26 +55,37 @@ class ResendNotificationProvider(NotificationProvider):
     """
 
     def __init__(self, api_key: str, from_email: str, test_email: Optional[str] = None):
-        self.api_key = api_key
-        self.from_email = from_email
-        self.test_email = test_email  # Override recipient for trial accounts
+        self.api_key = api_key.strip() if api_key else ""
+        self.from_email = from_email.strip() if from_email else "onboarding@resend.dev"
+        self.test_email = test_email.strip() if test_email else None  # Override recipient for trial accounts
 
     def send_email(self, to_email: str, subject: str, body: str) -> bool:
+        if not self.api_key:
+            logger.warning("RESEND_API_KEY is empty; email was not dispatched to external provider.")
+            return False
+
         try:
             import resend
             resend.api_key = self.api_key
             # Use test_email override if configured (Resend free tier restriction)
-            recipient = self.test_email if self.test_email else to_email
-            resend.Emails.send({
-                "from": self.from_email,
+            recipient = self.test_email if self.test_email else to_email.strip()
+
+            from_addr = self.from_email
+            if "@" not in from_addr:
+                from_addr = "onboarding@resend.dev"
+
+            resp = resend.Emails.send({
+                "from": from_addr,
                 "to": [recipient],
                 "subject": subject,
                 "html": body,
             })
-            log_event("EMAIL_NOTIFICATION_SENT", channel="resend", to=recipient, subject=subject)
+            email_id = getattr(resp, "id", None) or (resp.get("id") if isinstance(resp, dict) else "sent")
+            logger.info(f"Resend email sent successfully to={recipient} id={email_id}")
+            log_event("EMAIL_NOTIFICATION_SENT", channel="resend", to=recipient, subject=subject, email_id=str(email_id))
             return True
         except Exception as e:
-            logger.error(f"Resend email failed to={to_email}: {e}")
+            logger.error(f"Resend email dispatch failed to={to_email} (recipient={self.test_email or to_email}): {e}")
             log_event(
                 "EMAIL_NOTIFICATION_FAILED",
                 channel="resend",
@@ -86,7 +97,7 @@ class ResendNotificationProvider(NotificationProvider):
 
 def get_notification_provider() -> NotificationProvider:
     """Factory — returns configured email notification provider."""
-    if settings.RESEND_API_KEY:
+    if settings.RESEND_API_KEY and settings.RESEND_API_KEY.strip():
         return ResendNotificationProvider(
             api_key=settings.RESEND_API_KEY,
             from_email=settings.NOTIFICATION_FROM_EMAIL,
@@ -109,7 +120,7 @@ def send_order_notification(
     try:
         email_success = email_provider.send_email(user_email, subject, body)
         email_status = NotificationStatusEnum.SENT if email_success else NotificationStatusEnum.FAILED
-        email_err = None if email_success else "Provider returned failure"
+        email_err = None if email_success else "External email provider rejected dispatch or returned error"
     except Exception as e:
         email_status = NotificationStatusEnum.FAILED
         email_err = str(e)
