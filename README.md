@@ -341,7 +341,7 @@ This starts PostgreSQL, the FastAPI backend, and the Nginx-served frontend toget
 
 ---
 
-## Automated Test Suite
+## Automated Test Suite (73 Tests)
 
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -v

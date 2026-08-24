@@ -114,10 +114,15 @@ def check_test_count_consistency():
     readme_path = ROOT_DIR / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8")
 
-    expected_str = f"({total_test_functions} Tests)"
-    alt_expected_str = f"({total_test_functions} unit"
+    patterns = [
+        f"({total_test_functions} tests)",
+        f"({total_test_functions} unit",
+        f"{total_test_functions} test functions",
+        f"{total_test_functions} collected",
+        f"{total_test_functions} automated test functions",
+    ]
 
-    if expected_str.lower() not in readme_text.lower() and alt_expected_str.lower() not in readme_text.lower():
+    if not any(p in readme_text.lower() for p in patterns):
         print_fail(f"README.md test count does not match actual count ({total_test_functions} tests).")
 
     print_pass(f"README.md test count perfectly matches actual test suite ({total_test_functions} tests).")
