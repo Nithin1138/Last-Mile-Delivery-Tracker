@@ -82,9 +82,9 @@ Measures full HTTP request-response round-trips through FastAPI ASGI, JWT authen
 
 | Endpoint | Method | Scope | p50 (Median) | p95 | p99 | Mean |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: |
-| `/api/orders/quote` | `POST` | Pincode $\to$ Zone lookup + Dynamic price resolution | **`2.77 ms`** | `4.64 ms` | `15.21 ms` | `3.15 ms` |
-| `/api/orders` | `POST` | Full workflow: Rate calculation + DB insert + Auto-dispatch + Immutable history | **`13.36 ms`** | `15.24 ms` | `22.29 ms` | `13.62 ms` |
-| `/api/orders/{id}/timeline` | `GET` | Fetch append-only audit trail and status transition history | **`2.50 ms`** | `3.01 ms` | `4.06 ms` | `2.49 ms` |
+| `/api/orders/quote` | `POST` | Pincode $\to$ Zone lookup + Dynamic price resolution | **`2.69 ms`** | `4.56 ms` | `14.77 ms` | `3.04 ms` |
+| `/api/orders` | `POST` | Full workflow: Rate calculation + DB insert + Auto-dispatch + Immutable history | **`14.65 ms`** | `16.18 ms` | `22.01 ms` | `14.67 ms` |
+| `/api/orders/{id}/timeline` | `GET` | Fetch append-only audit trail and status transition history | **`2.46 ms`** | `2.64 ms` | `3.95 ms` | `2.47 ms` |
 
 ---
 
@@ -94,10 +94,10 @@ Measures real-world production performance over the public internet connecting t
 
 | Endpoint & Operation | Samples | p50 (Median) | p95 Latency | p99 Latency | Mean Latency |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **`POST /api/orders/quote`** <br> *(Instant Price Calculation)* | 50 | **`294.5 ms`** | `489.2 ms` | `555.6 ms` | `316.3 ms` |
-| **`POST /api/orders`** <br> *(Full Cloud Lifecycle + Auto-Dispatch)* | 15 | **`611.9 ms`** | `815.5 ms` | `815.5 ms` | `623.3 ms` |
-| **`GET /api/orders/{id}/timeline`** <br> *(Cloud Audit Trail Query)* | 50 | **`312.8 ms`** | `411.8 ms` | `450.1 ms` | `325.6 ms` |
-| **20 Concurrent Cloud Requests** <br> *(Simultaneous HTTPS Traffic)* | 20 | **`581.5 ms`** | `942.0 ms` | `942.0 ms` | `639.4 ms` |
+| **`POST /api/orders/quote`** <br> *(Instant Price Calculation)* | 50 | **`283.8 ms`** | `438.2 ms` | `563.4 ms` | `317.0 ms` |
+| **`POST /api/orders`** <br> *(Full Cloud Lifecycle + Auto-Dispatch)* | 15 | **`594.1 ms`** | `887.2 ms` | `887.2 ms` | `604.5 ms` |
+| **`GET /api/orders/{id}/timeline`** <br> *(Cloud Audit Trail Query)* | 50 | **`304.2 ms`** | `400.2 ms` | `412.3 ms` | `303.2 ms` |
+| **20 Concurrent Cloud Requests** <br> *(Simultaneous HTTPS Traffic)* | 20 | **`726.4 ms`** | `927.6 ms` | `927.6 ms` | `685.6 ms` |
 
 ---
 

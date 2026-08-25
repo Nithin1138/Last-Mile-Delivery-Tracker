@@ -3,7 +3,7 @@
 from typing import Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.models import Area, Zone
 from app.core.errors import AppError, ErrorCodes
@@ -12,7 +12,7 @@ from app.core.errors import AppError, ErrorCodes
 def resolve_pincode_to_zone(
     db: Session, pincode: str
 ) -> Tuple[Area, Zone]:
-    """Resolve a pincode to its area and zone.
+    """Resolve a pincode to its area and zone in a single indexed join query.
 
     Args:
         db: Database session.
@@ -24,7 +24,12 @@ def resolve_pincode_to_zone(
     Raises:
         AppError: If pincode is unknown, area is inactive, or zone is inactive.
     """
-    area = db.query(Area).filter(Area.pincode == pincode).first()
+    area = (
+        db.query(Area)
+        .options(joinedload(Area.zone))
+        .filter(Area.pincode == pincode)
+        .first()
+    )
 
     if area is None:
         raise AppError(
@@ -40,7 +45,7 @@ def resolve_pincode_to_zone(
             status_code=400,
         )
 
-    zone = db.query(Zone).filter(Zone.id == area.zone_id).first()
+    zone = area.zone
 
     if zone is None or not zone.is_active:
         raise AppError(

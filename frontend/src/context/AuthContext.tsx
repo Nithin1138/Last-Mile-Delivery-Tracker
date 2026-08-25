@@ -42,9 +42,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const demoTokenCache: Record<string, { user: User; token: string }> = {};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('cached_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const hasToken = !!localStorage.getItem('token');
+    const hasUser = !!localStorage.getItem('cached_user');
+    // If no token exists, immediately show login (no loading). If token + cached user exist, render immediately.
+    return hasToken && !hasUser;
+  });
 
   const [savedCustomAccount, setSavedCustomAccount] = useState<CustomAccount | null>(() => {
     try {
@@ -62,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const me = await authApi.getMe();
           setUser(me);
+          localStorage.setItem('cached_user', JSON.stringify(me));
           if (DEMO_EMAILS.includes(me.email)) {
             demoTokenCache[me.email] = { user: me, token: storedToken };
           } else {
@@ -72,6 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err) {
           console.error('Failed to validate session token', err);
           localStorage.removeItem('token');
+          localStorage.removeItem('cached_user');
           setToken(null);
           setUser(null);
         }
@@ -85,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string) => {
     const res = await authApi.login(email, pass);
     localStorage.setItem('token', res.access_token);
+    localStorage.setItem('cached_user', JSON.stringify(res.user));
     setToken(res.access_token);
     setUser(res.user);
 
@@ -110,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('cached_user');
     localStorage.removeItem('saved_custom_account');
     setToken(null);
     setUser(null);
@@ -121,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (demoTokenCache[email]) {
       const cached = demoTokenCache[email];
       localStorage.setItem('token', cached.token);
+      localStorage.setItem('cached_user', JSON.stringify(cached.user));
       setToken(cached.token);
       setUser(cached.user);
       return;
@@ -130,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authApi.login(email, pass);
     demoTokenCache[email] = { user: res.user, token: res.access_token };
     localStorage.setItem('token', res.access_token);
+    localStorage.setItem('cached_user', JSON.stringify(res.user));
     setToken(res.access_token);
     setUser(res.user);
   };
