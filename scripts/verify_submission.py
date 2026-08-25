@@ -42,7 +42,9 @@ REQUIRED_FILES = [
     "docs/requirements-mapping.md",
     "docs/operational_runbook.md",
     "docs/external_notification_verification.md",
+    "docs/benchmarks.md",
     "scripts/package_submission.py",
+    "scripts/run_benchmarks.py",
 ]
 
 FORBIDDEN_FILES = [

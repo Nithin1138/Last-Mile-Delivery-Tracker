@@ -411,6 +411,7 @@ docker compose up --build
 
 - [Demo Guide (Evaluator Walkthrough)](docs/demo-guide.md)
 - [System Architecture](docs/architecture.md)
+- [System Benchmarks & Latency Report](docs/benchmarks.md)
 - [Testing Strategy](docs/testing-strategy.md)
 - [System Design Write-Up](docs/system-design.md)
 - [Requirements Mapping](docs/requirements-mapping.md)
