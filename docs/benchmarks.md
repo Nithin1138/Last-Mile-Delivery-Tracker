@@ -26,8 +26,8 @@ Measures candidate agent discovery, zone affinity filtering, and Great-Circle Ha
 | **1,000 Agents** | **1 query** | `7.442 ms` | **`7.387 ms`** | `15.605 ms` | `16.981 ms` | `18.250 ms` |
 
 ### Key Architectural Insights:
-1. **$O(1)$ Database Query Complexity**: Regardless of whether the agent pool contains 10 or 1,000 agents, the discovery engine executes **exactly 1 single indexed database query** (`WHERE is_active = true AND availability_status = 'AVAILABLE' AND current_load < max_capacity`).
-2. **Sub-Millisecond Candidate Sorting**: In-memory 3-tier candidate ranking (Haversine distance $\to$ zone match $\to$ load balance) handles 100 active candidates in **$< 1 \text{ ms}$**, eliminating any need for distributed batch workers at standard city fleet scale.
+1. **Constant Database Query Count:** Candidate discovery executes exactly one indexed database query across the tested 10–1,000 agent pools (`WHERE is_active = true AND availability_status = 'AVAILABLE' AND current_load < max_capacity`). Candidate ranking is subsequently performed in memory.
+2. **Sub-Millisecond Candidate Ranking:** The in-memory 3-tier ranking strategy handles 100 active candidates in under 1 ms in the tested environment. At 1,000 agents, the measured mean ranking/discovery latency was 7.442 ms.
 
 ---
 
@@ -71,8 +71,8 @@ Measures deterministic rate calculation (volumetric weight resolution, active ra
 | **100 Concurrent Requests** | `92 ms` | **1,086 req/sec** | `0.85 ms` | **`0.80 ms`** | `1.42 ms` | `2.10 ms` |
 
 ### Key Findings:
-- Pure decimal mathematical calculations combined with indexed rate-card queries achieve **$> 1,200 \text{ quotes/sec}$** on a single core.
-- Zero floating-point drift: All pricing uses Python `Decimal` with `ROUND_HALF_UP` banking precision.
+- Pure `Decimal` calculations combined with indexed rate-card queries achieved **>1,200 quotes/sec in the tested local environment**.
+- All monetary calculations use Python `Decimal` with explicit `ROUND_HALF_UP` rounding, avoiding binary floating-point representation errors.
 
 ---
 
@@ -92,38 +92,49 @@ Measures full HTTP request-response round-trips through FastAPI ASGI, JWT authen
 
 Measures real-world production performance over the public internet connecting to the live Render deployment (`https://lastmile-backend-f1ma.onrender.com`) using persistent connection pooling (HTTP Keep-Alive).
 
+### Latency Distributions:
 | Endpoint & Operation | Samples | p50 (Median) | p95 Latency | p99 Latency | Mean Latency |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **`POST /api/orders/quote`** <br> *(Instant Price Calculation)* | 50 | **`283.8 ms`** | `438.2 ms` | `563.4 ms` | `317.0 ms` |
+| **`POST /api/orders/quote`** <br> *(Price Calculation)* | 50 | **`283.8 ms`** | `438.2 ms` | `563.4 ms` | `317.0 ms` |
 | **`POST /api/orders`** <br> *(Full Cloud Lifecycle + Auto-Dispatch)* | 15 | **`594.1 ms`** | `887.2 ms` | `887.2 ms` | `604.5 ms` |
 | **`GET /api/orders/{id}/timeline`** <br> *(Cloud Audit Trail Query)* | 50 | **`304.2 ms`** | `400.2 ms` | `412.3 ms` | `303.2 ms` |
 | **20 Concurrent Cloud Requests** <br> *(Simultaneous HTTPS Traffic)* | 20 | **`726.4 ms`** | `927.6 ms` | `927.6 ms` | `685.6 ms` |
+
+### Reliability & Error Rates:
+| Test / Endpoint | Samples | Successful | Failed | Error Rate |
+| :--- | :---: | :---: | :---: | :---: |
+| **Price Quote** (`POST /quote`) | 50 | 50 | 0 | **0.0%** |
+| **Order Creation** (`POST /orders`) | 15 | 15 | 0 | **0.0%** |
+| **Timeline Query** (`GET /timeline`) | 50 | 50 | 0 | **0.0%** |
+| **20 Concurrent Quotes** | 20 | 20 | 0 | **0.0%** |
 
 ---
 
 ## 6. Performance Comparison Summary (Local vs. Cloud)
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               LATENCY COMPARISON SUMMARY                              │
-├────────────────────────────────┬──────────────────────────┬────────────────────────────┤
-│ Operation                      │ Local In-Process (Core)  │ Live Cloud (Public HTTPS)  │
-├────────────────────────────────┼──────────────────────────┼────────────────────────────┤
-│ Price Quote (POST /quote)      │ 2.77 ms                  │ 294.5 ms (Network bounded) │
-│ Order Creation (POST /orders)  │ 13.36 ms                 │ 611.9 ms (ACID + Network)  │
-│ Timeline Query (GET /timeline) │ 2.50 ms                  │ 312.8 ms (Network bounded) │
-│ Candidate Ranking (100 agents) │ 0.73 ms                  │ Sub-millisecond CPU math   │
-│ Pricing Throughput (10k ops)   │ 1,349 quotes/sec         │ High-throughput scalable   │
-└────────────────────────────────┴──────────────────────────┴────────────────────────────┘
-```
+| Operation | Local p50 | Cloud p50 |
+| :--- | :---: | :---: |
+| **Price Quote** (`POST /quote`) | **`2.69 ms`** | **`283.8 ms`** *(End-to-end HTTPS)* |
+| **Order Creation** (`POST /orders`) | **`14.65 ms`** | **`594.1 ms`** *(End-to-end HTTPS)* |
+| **Timeline Query** (`GET /timeline`) | **`2.46 ms`** | **`304.2 ms`** *(End-to-end HTTPS)* |
+| **Candidate Ranking, 100 agents** | **`0.731 ms`** | N/A |
+| **Pricing Throughput, 10k operations** | **`1,349 quotes/sec`** | Not measured |
+
+> **Local measurements isolate application/database execution in a controlled environment. Cloud measurements represent end-to-end HTTPS latency against the deployed Render service and include network, deployment, connection, and server-side processing overhead.**
 
 ---
 
-## 7. How to Reproduce Locally & Against Production
+## 7. Benchmark Scope & Limitations
 
-The unified benchmark harness is executable with a single command:
+> These measurements represent empirical observations from the specified local and deployed environments and are not production SLO guarantees. Local benchmarks isolate application and database execution, while cloud benchmarks measure end-to-end HTTPS request latency. The production benchmark uses relatively small sample sizes, particularly for order creation, so the reported percentiles should be interpreted as observed sample statistics rather than statistically stable long-term production percentiles. The benchmarks do not evaluate horizontal scaling, multi-instance deployments, geographically distributed clients, or sustained high-volume production traffic.
+
+---
+
+## 8. Reproduction
 
 ```bash
-# Run both Local In-Process and Live Cloud Production benchmarks
+# Run both local and live cloud benchmarks
 python3 scripts/run_benchmarks.py
 ```
+
+The harness records request latency, percentile distributions, throughput, database query counts and concurrency outcomes for the supported benchmark scenarios.
