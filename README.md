@@ -254,9 +254,11 @@ WHERE id = :agent_id
 
 ### Three-Tier Ranking
 
-1. **Haversine proximity** — Nearest agent to pickup coordinates (GPS great-circle distance).
+1. **Haversine proximity** — Nearest agent to pickup coordinates (GPS great-circle distance computed via pluggable `DistanceProvider` protocol in [`backend/app/services/distance.py`](backend/app/services/distance.py)).
 2. **Zone match preference** — Same-zone agents preferred as tie-breaker.
 3. **Load balancing** — Least-loaded eligible agent selected.
+
+*(See [docs/architecture.md](docs/architecture.md#5-proximity--distance-engine-strategy-distanceprovider-protocol) for road-distance trade-offs and enterprise provider extensibility).*
 
 ---
 

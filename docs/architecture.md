@@ -111,3 +111,69 @@ CREATED ──► ASSIGNED ──► PICKED_UP ──► IN_TRANSIT ──► OU
 
 - Invalid transitions (e.g. `DELIVERED -> IN_TRANSIT` or `PICKED_UP -> CANCELLED`) are strictly rejected by the backend with structured error code `INVALID_STATUS_TRANSITION`.
 - Administrative overrides are supported for operational contingencies, but are logged as explicit `[ADMIN_OVERRIDE]` events in the immutable audit history.
+
+---
+
+## 5. Proximity & Distance Engine Strategy (`DistanceProvider` Protocol)
+
+### Straight-Line (Haversine) vs. Turn-by-Turn Road Routing
+The assignment engine uses the **Great-Circle Haversine formula** to rank agent proximity. In real-world urban logistics, straight-line distance differs from actual driving time due to:
+1. **Topological barriers**: Rivers, railway crossings, and divided expressways where two points 500 meters apart require a 5 km detour.
+2. **Urban circuity factor**: One-way streets, dense grid systems, and alleys typically introduce a $1.2\times$ to $1.5\times$ distance factor.
+3. **Dynamic traffic**: An agent 3 km away on an open ring road may arrive faster than an agent 1 km away in congested alleys.
+
+### Defensible Engineering Trade-Off:
+Haversine was chosen deliberately for this reference implementation:
+- **Zero Latency**: Executes in $< 0.1 \text{ ms}$ pure CPU math (evaluates 100 agents in $< 1 \text{ ms}$).
+- **Zero External Dependencies**: 100% offline, zero API keys required, zero vendor lock-in.
+- **100% Deterministic Testing**: CI/CD pipelines never fail due to external mapping API rate limits or network hiccups.
+
+### Pluggable Architecture (`DistanceProvider`):
+Proximity calculation is isolated behind a protocol interface in [`backend/app/services/distance.py`](../backend/app/services/distance.py):
+
+```python
+class DistanceProvider(Protocol):
+    """Protocol for pluggable distance and proximity calculation providers."""
+
+    def calculate(
+        self,
+        lat1: Optional[float],
+        lon1: Optional[float],
+        lat2: Optional[float],
+        lon2: Optional[float],
+    ) -> Optional[float]:
+        ...
+```
+
+For enterprise production deployments requiring turn-by-turn routing (e.g., OSRM or Google Distance Matrix API), a new provider class implementing `DistanceProvider` can be plugged in without modifying a single line of order lifecycle, dispatch, or database transaction logic.
+
+---
+
+## 6. Containerization & Service Architecture (`docker-compose.yml`)
+
+The multi-container architecture is orchestrated via [`docker-compose.yml`](../docker-compose.yml):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Docker Compose Network                   │
+│                                                             │
+│   ┌─────────────────────┐         ┌─────────────────────┐   │
+│   │ lastmile-db         │         │ lastmile-backend    │   │
+│   │ (PostgreSQL 16)     │◄────────┤ (FastAPI Python)    │   │
+│   │ Port: 5432          │         │ Port: 8000          │   │
+│   │ Volume: db-data     │         │ Health: pg_isready  │   │
+│   └─────────────────────┘         └─────────────────────┘   │
+│                                              ▲              │
+│                                              │              │
+│                                   ┌──────────┴──────────┐   │
+│                                   │ lastmile-frontend   │   │
+│                                   │ (Nginx / React SPA) │   │
+│                                   │ Port: 5173          │   │
+│                                   └─────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+1. **`db` Service (lines 5–24)**: Runs `postgres:16-alpine` with persistent volume mount `postgres_data`, credentials, and health check (`pg_isready`).
+2. **`backend` Service (lines 26–52)**: Builds `./backend/Dockerfile`, blocks until `db` passes health check, seeds schema, and serves FastAPI.
+3. **`frontend` Service (lines 54–69)**: Builds `./frontend/Dockerfile`, serves optimized static assets via Nginx, and proxies `/api` to the backend.
+
